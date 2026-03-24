@@ -170,12 +170,13 @@ def search_by_channel(
         r["rank"] = i
 
     return {
-        "channel_id":   channel_id,
-        "channel_name": channel_display,
-        "query":        channel,
-        "amount":       amount,
-        "results":      results,
-        "error":        None,
+        "channel_id":    channel_id,
+        "channel_name":  channel_display,
+        "query":         channel,
+        "amount":        amount,
+        "merchant_hint": merchant_hint or "",
+        "results":       results,
+        "error":         None,
     }
 
 

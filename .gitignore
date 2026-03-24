@@ -9,3 +9,7 @@ data/debug/*
 !data/debug/.gitkeep
 venv/
 .venv/
+dist/
+ctbc_payment_advisor.egg-info/
+*.egg-info/
+nohup.out

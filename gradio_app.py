@@ -39,23 +39,22 @@ def _get_groq() -> Groq | None:
     return _groq_client
 
 
-def _detect_overseas(scenario: str) -> bool:
+def _detect_overseas(scenario: str) -> tuple[bool, str]:
     """
-    使用 Groq llama-3.1-8b-instant 判斷使用者描述的情境是否為海外消費。
-    回傳 True 表示海外消費，False 表示國內消費。
-    若 API 不可用，fallback 到關鍵字判斷。
+    使用關鍵字 + Groq llama-3.1-8b-instant 判斷是否為海外消費。
+    回傳 (is_overseas, detection_method)。
     """
-    # fallback：關鍵字快速判斷（避免 API 失敗時無回應）
     _OVERSEAS_KW = ("日本", "韓國", "美國", "歐洲", "英國", "法國", "德國", "泰國",
                     "香港", "澳門", "新加坡", "馬來西亞", "澳洲", "加拿大", "中國",
                     "出國", "國外", "海外", "境外", "overseas", "abroad", "foreign",
                     "旅外", "出境", "飛去", "去國外")
-    if any(kw in scenario for kw in _OVERSEAS_KW):
-        return True
+    matched = [kw for kw in _OVERSEAS_KW if kw in scenario]
+    if matched:
+        return True, f"關鍵字比對（命中：「{'、'.join(matched[:3])}」）"
 
     client = _get_groq()
     if client is None:
-        return False
+        return False, "關鍵字比對（無命中，Groq API 未初始化）"
 
     try:
         resp = client.chat.completions.create(
@@ -78,9 +77,10 @@ def _detect_overseas(scenario: str) -> bool:
             temperature=0,
         )
         answer = resp.choices[0].message.content.strip().lower()
-        return answer.startswith("yes") or answer.startswith("y")
+        result = answer.startswith("yes") or answer.startswith("y")
+        return result, "Groq llama-3.1-8b-instant 語意判斷（關鍵字無命中）"
     except Exception:
-        return False
+        return False, "關鍵字比對（無命中，LLM 呼叫失敗）"
 
 # ── 卡片清單（啟動時載入一次）────────────────────────────────────────────────
 
@@ -285,40 +285,69 @@ def _format_single_channel(
     )
 
 
+_DATA_SOURCE_LABEL = {
+    "microsite":     "microsite_deals ✅（最精確）",
+    "card_feature":  "card_features ✅（官網驗證）",
+    "api":           "ctbc/fubon_cards（基礎資料）",
+}
+
+
 def recommend(
     selected_ids: list[str],
     amount: float | None,
     scenario: str,
     preferred_types: list[str],
-) -> str:
+) -> tuple[str, str]:
+    """回傳 (推薦結果 markdown, MCP工具調用記錄 markdown)"""
+    _EMPTY_LOG = "*尚未查詢，工具調用記錄將顯示於此。*"
+
     if not selected_ids:
-        return "⚠️ 請先勾選您目前持有的信用卡。"
+        return "⚠️ 請先勾選您目前持有的信用卡。", _EMPTY_LOG
     if not amount or amount <= 0:
-        return "⚠️ 請輸入有效的消費金額（須大於 0）。"
+        return "⚠️ 請輸入有效的消費金額（須大於 0）。", _EMPTY_LOG
     if not scenario or not scenario.strip():
-        return "⚠️ 請描述您的消費情境（例如：我要去 7-11 買東西）。"
+        return "⚠️ 請描述您的消費情境（例如：我要去 7-11 買東西）。", _EMPTY_LOG
 
-    # ── 海外消費辨識 ──
-    is_overseas = _detect_overseas(scenario.strip())
+    log: list[str] = ["## 🔧 MCP 工具調用記錄\n"]
+    step = 1
 
+    # ── Step 1：海外消費辨識 ──────────────────────────────────────────
+    is_overseas, overseas_method = _detect_overseas(scenario.strip())
+    overseas_icon = "🌏 偵測為**海外消費**" if is_overseas else "🏠 偵測為**國內消費**"
+    log.append(
+        f"### Step {step}　`_detect_overseas()`\n"
+        f"- **用途**：判斷是否為海外消費，決定是否加入 `overseas_general` 通路\n"
+        f"- **方法**：{overseas_method}\n"
+        f"- **結果**：{overseas_icon}\n"
+    )
+    step += 1
+
+    # ── Step 2：通路識別 ──────────────────────────────────────────────
     raw_channels = _extract_channels(scenario)
     if not raw_channels:
         raw_channels = ["一般消費"]
 
     seen: set[str] = set()
     parsed: list[tuple[str, str]] = []
-
-    # 若偵測到海外消費，優先加入 overseas_general 通路
     if is_overseas:
         seen.add("overseas_general")
         parsed.append(("海外消費", "overseas_general"))
-
     for ch_name in raw_channels:
         cid = _resolve_channel(ch_name)
         if cid not in seen:
             seen.add(cid)
             parsed.append((_channel_display_name(cid, ch_name), cid))
 
+    ch_list = "、".join(f"`{cid}`（{disp}）" for disp, cid in parsed)
+    log.append(
+        f"### Step {step}　`_extract_channels()`\n"
+        f"- **用途**：從消費情境解析出需要查詢的通路清單\n"
+        f"- **輸入**：「{scenario.strip()}」\n"
+        f"- **結果**：{ch_list}\n"
+    )
+    step += 1
+
+    # ── Step 3+：各通路查詢 ───────────────────────────────────────────
     parts: list[str] = []
     for ch_display, ch_id in parsed:
         result = search_by_channel(
@@ -327,12 +356,42 @@ def recommend(
             amount=amount,
             top_k=len(selected_ids),
         )
+        results = result.get("results", [])
+        merchant_hint = result.get("merchant_hint", "")
+
+        # 資料來源統計
+        source_rows = []
+        for r in results:
+            src = _DATA_SOURCE_LABEL.get(r.get("data_source", ""), r.get("data_source", ""))
+            merchant_info = f"（商家：{r['merchant']}）" if r.get("merchant") else ""
+            fallback_info = " ← *通路無資料，退回一般消費*" if r.get("is_fallback") else ""
+            source_rows.append(
+                f"  - **{r['card_name']}**：{src}{merchant_info}{fallback_info}"
+            )
+        source_detail = "\n".join(source_rows) if source_rows else "  - *無持有卡有此通路資料*"
+
+        hint_line = (
+            f"- **商家 hint**：`{result.get('merchant_hint', '')}` → 啟動商家層級精確比對\n"
+            if result.get("merchant_hint") else
+            "- **商家 hint**：無（輸入為通路類別詞，取 channel 最高值）\n"
+        )
+
+        log.append(
+            f"### Step {step}　`search_by_channel(channel=\"{ch_id}\", amount={amount:.0f})`\n"
+            f"- **用途**：查詢持有卡在「{ch_display}」通路的最高回饋，依三層優先序取資料\n"
+            f"{hint_line}"
+            f"- **查詢卡片數**：{len(selected_ids)} 張\n"
+            f"- **各卡資料來源**：\n{source_detail}\n"
+        )
+        step += 1
+
         parts.append(
             _format_single_channel(
-                ch_display, result.get("results", []), amount, preferred_types or []
+                ch_display, results, amount, preferred_types or []
             )
         )
 
+    # ── 組合推薦結果 ─────────────────────────────────────────────────
     _pref_labels = {v: k for k, v in dict(REWARD_TYPE_CHOICES).items()}
     pref_line = (
         f"**偏好回饋**：{'、'.join(_pref_labels.get(p, p) for p in preferred_types)}　｜　"
@@ -350,7 +409,9 @@ def recommend(
         f"{overseas_warning}"
         f"\n\n---\n\n"
     )
-    return header + "\n\n---\n\n".join(parts)
+
+    tool_log = "\n".join(log)
+    return header + "\n\n---\n\n".join(parts), tool_log
 
 
 # ── Gradio UI ─────────────────────────────────────────────────────────────────
@@ -400,13 +461,19 @@ with gr.Blocks(title="💳 CTBC & 富邦信用卡支付建議系統") as demo:
                 label="推薦結果",
             )
 
+            with gr.Accordion("🔧 MCP 工具調用記錄", open=False):
+                tool_log_output = gr.Markdown(
+                    value="*尚未查詢，工具調用記錄將顯示於此。*",
+                    label="工具調用記錄",
+                )
+
     _all_ids = [card_id for _, card_id in CARD_CHOICES]
     select_all_btn.click(fn=lambda: _all_ids, outputs=cards_input)
     clear_btn.click(fn=lambda: [], outputs=cards_input)
 
     _inputs = [cards_input, amount_input, scenario_input, preferred_input]
-    submit_btn.click(fn=recommend, inputs=_inputs, outputs=output)
-    scenario_input.submit(fn=recommend, inputs=_inputs, outputs=output)
+    submit_btn.click(fn=recommend, inputs=_inputs, outputs=[output, tool_log_output])
+    scenario_input.submit(fn=recommend, inputs=_inputs, outputs=[output, tool_log_output])
 
     gr.Markdown(
         "---\n*資料來源：中信銀行官網 API（2026-03-07）+ 富邦銀行官網人工整理（2026-03-16）。"
