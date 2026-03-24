@@ -147,7 +147,7 @@ python -m main          # CLI Agent
 
 | GitHub | 角色 |
 |--------|------|
-| [@Gene-Liu-portfolio](https://github.com/Gene-Liu-portfolio) | 專案負責人 |
+| [@Gene-Liu-portfolio](https://github.com/Gene-Liu-portfolio) | 實習生 |
 | [@LarryinMexico](https://github.com/LarryinMexico) | 實習生 |
 | [@Lyyyy17](https://github.com/Lyyyy17) | 實習生 |
 | [@rockeywang404](https://github.com/rockeywang404) | 實習生 |
