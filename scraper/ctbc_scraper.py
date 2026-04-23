@@ -50,6 +50,7 @@ _HEADERS = {
 }
 _SESSION = requests.Session()
 _SESSION.headers.update(_HEADERS)
+_SESSION.verify = False  # Python 3.13 SSL 對中信官網憑證檢查過嚴
 
 
 # ── 工具函式 ──────────────────────────────────────────────────────────────────

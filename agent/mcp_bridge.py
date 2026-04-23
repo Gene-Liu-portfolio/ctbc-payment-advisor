@@ -4,8 +4,9 @@ mcp_bridge.py
 MCP Tools 與 Groq Function Calling 的橋接層。
 
 功能：
-1. 定義 Groq 相容的 Tool Schema（不含 cards_owned，由 Agent 自動注入）
-2. 提供 execute_tool() 函式，透過 HTTP 呼叫遠端 MCP Server
+1. 啟動時透過 MCP tools/list 動態發現 Server 工具，自動轉換為 Groq Tool Schema
+2. cards_owned 由 Agent 自動注入，不暴露給 LLM
+3. 提供 execute_tool() 函式，透過 HTTP 呼叫遠端 MCP Server
 """
 
 from __future__ import annotations
@@ -21,63 +22,20 @@ MCP_SERVER_URL = os.environ.get(
     "https://ctbc-payment-advisor.onrender.com/mcp",
 )
 
+# cards_owned 由 Agent 注入，不讓 LLM 看到也無法填寫
+_HIDDEN_PARAMS = {"cards_owned"}
+
 _session_id: str | None = None
+_discovered_tools: list[dict] | None = None
 
 
-def _get_session_id() -> str:
-    """初始化 MCP session，回傳 session ID（同一 process 內只初始化一次）。"""
-    global _session_id
-    if _session_id:
-        return _session_id
+# ── MCP HTTP 通訊層 ──────────────────────────────────────────────────────────
 
-    resp = requests.post(
-        MCP_SERVER_URL,
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-        },
-        json={
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "ctbc-agent", "version": "1.0"},
-            },
-            "id": 1,
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    _session_id = resp.headers.get("mcp-session-id")
-    if not _session_id:
-        raise RuntimeError("MCP server 未回傳 session ID，請確認 server 是否正常運作")
-    return _session_id
-
-
-def _call_tool(tool_name: str, arguments: dict) -> dict:
-    """透過 HTTP 呼叫遠端 MCP tool，回傳 result dict。"""
-    session_id = _get_session_id()
-    resp = requests.post(
-        MCP_SERVER_URL,
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            "mcp-session-id": session_id,
-        },
-        json={
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {"name": tool_name, "arguments": arguments},
-            "id": 2,
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-
-    # Streamable HTTP 回傳 SSE 格式，正確處理跨行 data: 欄位
-    # 強制 UTF-8 解碼（避免 requests 自動用 ISO-8859-1 導致中文 byte 觸發 splitlines 斷行）
-    # SSE 規範：同一 event 的多行 data: 需要先 join 再解析
+def _parse_sse_response(resp: requests.Response) -> dict:
+    """
+    解析 MCP Streamable HTTP 的 SSE 回應。
+    強制 UTF-8 解碼，避免 requests 自動用 ISO-8859-1 導致中文截斷。
+    """
     body = resp.content.decode("utf-8")
     events: list[str] = []
     current_data_lines: list[str] = []
@@ -97,141 +55,143 @@ def _call_tool(tool_name: str, arguments: dict) -> dict:
             continue
         if "error" in payload:
             return {"error": payload["error"].get("message", "未知錯誤")}
-        content = payload.get("result", {}).get("content", [])
-        if content and content[0].get("type") == "text":
-            return json.loads(content[0]["text"])
-        return payload.get("result", {})
+        return payload
 
     return {"error": "MCP server 回傳格式無法解析"}
+
+
+def _mcp_request(method: str, params: dict, *, need_session: bool = True) -> dict:
+    """發送 JSON-RPC 請求到 MCP Server，回傳解析後的 payload。"""
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+    }
+    if need_session:
+        headers["mcp-session-id"] = _get_session_id()
+
+    resp = requests.post(
+        MCP_SERVER_URL,
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": 1,
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+
+    # initialize 回傳 session ID，需額外處理
+    if method == "initialize":
+        sid = resp.headers.get("mcp-session-id")
+        if sid:
+            global _session_id
+            _session_id = sid
+
+    return _parse_sse_response(resp)
+
+
+def _get_session_id() -> str:
+    """初始化 MCP session，回傳 session ID（同一 process 內只初始化一次）。"""
+    global _session_id
+    if _session_id:
+        return _session_id
+
+    _mcp_request(
+        "initialize",
+        {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "ctbc-agent", "version": "2.0"},
+        },
+        need_session=False,
+    )
+    if not _session_id:
+        raise RuntimeError("MCP server 未回傳 session ID，請確認 server 是否正常運作")
+    return _session_id
+
+
+# ── 動態工具發現 ──────────────────────────────────────────────────────────────
+
+def _mcp_schema_to_groq(tool: dict) -> dict:
+    """
+    將 MCP tool schema 轉換為 Groq function calling 格式。
+    自動移除 cards_owned 參數（由 Agent 注入，不讓 LLM 控制）。
+    """
+    input_schema = tool.get("inputSchema", {})
+    properties = dict(input_schema.get("properties", {}))
+    required = list(input_schema.get("required", []))
+
+    # 移除隱藏參數
+    for param in _HIDDEN_PARAMS:
+        properties.pop(param, None)
+        if param in required:
+            required.remove(param)
+
+    return {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool.get("description", ""),
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": required,
+            },
+        },
+    }
+
+
+def discover_tools() -> list[dict]:
+    """
+    從 MCP Server 動態發現所有工具，轉換為 Groq Tool Schema。
+    結果會快取，同一 process 只呼叫一次。
+    """
+    global _discovered_tools
+    if _discovered_tools is not None:
+        return _discovered_tools
+
+    payload = _mcp_request("tools/list", {})
+    mcp_tools = payload.get("result", {}).get("tools", [])
+
+    # 排除輔助工具（reload_data 不需要暴露給 LLM）
+    _EXCLUDE_TOOLS = {"reload_data"}
+    groq_tools = [
+        _mcp_schema_to_groq(t)
+        for t in mcp_tools
+        if t["name"] not in _EXCLUDE_TOOLS
+    ]
+
+    _discovered_tools = groq_tools
+    return _discovered_tools
+
+
+def get_tool_definitions() -> list[dict]:
+    """取得 Groq 格式的工具定義（動態發現，含快取）。"""
+    return discover_tools()
+
+
+# ── 工具呼叫 ──────────────────────────────────────────────────────────────────
+
+def _call_tool(tool_name: str, arguments: dict) -> dict:
+    """透過 HTTP 呼叫遠端 MCP tool，回傳 result dict。"""
+    payload = _mcp_request("tools/call", {"name": tool_name, "arguments": arguments})
+
+    # 從 JSON-RPC result 中取出工具回傳值
+    content = payload.get("result", {}).get("content", [])
+    if content and content[0].get("type") == "text":
+        try:
+            return json.loads(content[0]["text"])
+        except json.JSONDecodeError:
+            return {"text": content[0]["text"]}
+    return payload.get("result", payload)
 
 
 def _get_cards_menu_remote() -> list[dict]:
     """從遠端取得卡片選單。"""
     result = _call_tool("list_all_cards", {})
     return result.get("cards", [])
-
-
-# ── Groq Tool Definitions（不含 cards_owned，由 Agent 注入）──────────────────
-
-TOOL_DEFINITIONS: list[dict] = [
-    {
-        "type": "function",
-        "function": {
-            "name": "search_by_channel",
-            "description": (
-                "從使用者持有的信用卡中，找出在指定通路回饋最高的卡片。"
-                "支援模糊通路輸入，如 '711'、'小7'、'統一超商'、'全聯'、'蝦皮'、'外送'、'LINE Pay' 等。"
-                "必要時使用此工具查詢特定通路的最優卡片。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "channel": {
-                        "type": "string",
-                        "description": "通路名稱或商家名稱，如 '7-ELEVEN'、'超商'、'全聯'、'蝦皮'、'Uber Eats'、'LINE Pay'",
-                    },
-                    "amount": {
-                        "type": "number",
-                        "description": "預計消費金額（新台幣），用於計算預估回饋。不確定則填 0",
-                    },
-                    "top_k": {
-                        "type": "integer",
-                        "description": "最多回傳幾張卡的結果，預設 3",
-                    },
-                },
-                "required": ["channel"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "recommend_payment",
-            "description": (
-                "根據自然語言消費情境，從使用者持有的卡中推薦最佳刷卡選擇。"
-                "自動解析情境中的通路和金額，支援多通路情境。"
-                "當使用者描述一個完整的消費情境時優先使用此工具。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "scenario": {
-                        "type": "string",
-                        "description": "消費情境的自然語言描述，如 '去全聯買菜花了1500元' 或 '今天要叫外送，大概300元'",
-                    },
-                },
-                "required": ["scenario"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "compare_cards",
-            "description": (
-                "比較使用者持有的多張信用卡在特定通路（或全通路）的回饋差異。"
-                "適合用於 '我的卡哪張比較好'、'幫我比較這幾張卡' 等整體比較需求。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "channel": {
-                        "type": "string",
-                        "description": "指定比較的通路，不填則比較全通路",
-                    },
-                    "amount": {
-                        "type": "number",
-                        "description": "參考消費金額（新台幣），預設 1000",
-                    },
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_promotions",
-            "description": (
-                "取得目前有效的信用卡優惠活動清單，以及持有卡中即將到期的優惠提醒。"
-                "適合用於 '最近有什麼優惠'、'有什麼活動快到期' 等查詢。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "category": {
-                        "type": "string",
-                        "description": (
-                            "通路分類篩選，如 'ecommerce'（電商）、'dining'（餐飲）、"
-                            "'food_delivery'（外送）、'travel'（旅遊）。不填回傳全部。"
-                        ),
-                    },
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_card_details",
-            "description": (
-                "取得單張信用卡的完整優惠資訊，包含所有通路、條件、截止日、備註。"
-                "當使用者想了解特定卡片的詳細內容時使用。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "卡片 ID，格式如 'ctbc_c_linepay'",
-                    },
-                },
-                "required": ["card_id"],
-            },
-        },
-    },
-]
 
 
 # ── 工具執行（自動注入 cards_owned）─────────────────────────────────────────
@@ -243,7 +203,6 @@ def execute_tool(
 ) -> str:
     """
     執行指定的 MCP 工具，自動注入 cards_owned 後回傳 JSON 字串。
-    透過 HTTP 呼叫遠端 MCP Server。
 
     Args:
         tool_name:   工具名稱

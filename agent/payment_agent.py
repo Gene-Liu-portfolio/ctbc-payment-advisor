@@ -19,7 +19,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from groq import Groq
 
-from .mcp_bridge import TOOL_DEFINITIONS, execute_tool
+from .mcp_bridge import get_tool_definitions, execute_tool
 from .prompts import build_system_prompt
 
 load_dotenv()
@@ -71,7 +71,7 @@ class PaymentAgent:
             response = self._client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                tools=TOOL_DEFINITIONS,
+                tools=get_tool_definitions(),
                 tool_choice="auto",
                 temperature=0.3,
                 max_tokens=2048,

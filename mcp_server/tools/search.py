@@ -3,6 +3,10 @@ search.py
 ---------
 Tool 1：search_by_channel
 依通路搜尋使用者持有的卡中回饋最高的選擇。
+
+資料來源：merged_cards.json（已在 build time 合併三層資料）
+- channels：card_features 優先覆蓋 API，直接查 get_best_channel_for_card
+- deals：microsite 商家促銷，查 get_best_deal_for_card
 """
 
 from __future__ import annotations
@@ -12,16 +16,11 @@ from typing import Optional
 from ..utils.calculator import calc_estimated_cashback, is_expiring_soon
 from ..utils.data_loader import (
     get_best_channel_for_card,
-    get_best_feature_channel,
-    get_best_microsite_deal,
+    get_best_deal_for_card,
     get_cards_by_ids,
 )
 
-# 從 scraper 的 channel_mapper 重用通路正規化邏輯
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from scraper.channel_mapper import get_channel_id, normalize_merchant
+from ..utils.channel_mapper import get_channel_id, normalize_merchant
 
 
 def search_by_channel(
@@ -32,6 +31,10 @@ def search_by_channel(
 ) -> dict:
     """
     從使用者持有的信用卡中，找出在指定通路回饋最高的卡片。
+
+    查詢流程（每張卡）：
+    1. 先查 deals（microsite 商家促銷）— 最精確
+    2. 再查 channels（已合併 card_features + API）— 通路層級
 
     Args:
         channel:     通路名稱，支援模糊輸入（如 "711"、"超商"、"全聯"）
@@ -45,22 +48,8 @@ def search_by_channel(
           "channel_name": "超商",
           "query": "711",
           "amount": 500,
-          "results": [
-            {
-              "rank": 1,
-              "card_id": "ctbc_c_linepay",
-              "card_name": "LINE Pay信用卡",
-              "cashback_rate": 0.05,
-              "cashback_type": "cash",
-              "cashback_description": "5%回饋",
-              "estimated_cashback": 25.0,
-              "max_cashback_per_period": 300,
-              "valid_end": "2026-06-30",
-              "expiring_soon": false,
-              "conditions": "...",
-            }, ...
-          ],
-          "error": null   # 若有錯誤則填入訊息
+          "results": [ ... ],
+          "error": null
         }
     """
     # 驗證持卡清單
@@ -76,20 +65,20 @@ def search_by_channel(
     if not owned_cards:
         return _error("找不到您持有的卡片資料，請確認 card_id 是否正確")
 
-    # 若輸入是已知商家，保留商家名稱作為 hint（供 microsite 商家層級比對）
+    # 若輸入是已知商家，保留商家名稱作為 hint（供 deals 商家層級比對）
     normalized = normalize_merchant(channel)
-    from scraper.channel_mapper import MERCHANT_TO_CHANNEL
+    from ..utils.channel_mapper import MERCHANT_TO_CHANNEL
     merchant_hint = normalized if normalized in MERCHANT_TO_CHANNEL else None
 
-    # 對每張持有卡查最優通路回饋
+    # 對每張持有卡查最優回饋
     results = []
     for card in owned_cards:
         card_id = card["card_id"]
 
-        # ── 優先使用微型網站精確促銷資料 ──
-        microsite_deal = get_best_microsite_deal(card_id, channel_id, merchant_hint=merchant_hint)
-        if microsite_deal:
-            rate = microsite_deal.get("cashback_rate")
+        # ── 優先查 deals（microsite 商家促銷）──
+        deal = get_best_deal_for_card(card, channel_id, merchant_hint=merchant_hint)
+        if deal:
+            rate = deal.get("cashback_rate")
             cap  = None
             est  = calc_estimated_cashback(amount, rate, cap) if amount > 0 else None
             results.append({
@@ -97,42 +86,20 @@ def search_by_channel(
                 "card_name":            card["card_name"],
                 "cashback_rate":        rate,
                 "cashback_type":        "cash",
-                "cashback_description": microsite_deal.get("benefit", ""),
+                "cashback_description": deal.get("benefit", ""),
                 "estimated_cashback":   est,
                 "max_cashback_per_period": cap,
-                "valid_end":            microsite_deal.get("valid_end"),
-                "expiring_soon":        is_expiring_soon(microsite_deal.get("valid_end")),
-                "conditions":           microsite_deal.get("conditions", ""),
-                "merchant":             microsite_deal.get("merchant", ""),
-                "payment_method":       microsite_deal.get("payment_method", ""),
+                "valid_end":            deal.get("valid_end"),
+                "expiring_soon":        is_expiring_soon(deal.get("valid_end")),
+                "conditions":           deal.get("conditions", ""),
+                "merchant":             deal.get("merchant", ""),
+                "payment_method":       deal.get("payment_method", ""),
                 "data_source":          "microsite",
                 "is_fallback":          False,
             })
             continue
 
-        # ── 次優先：使用卡片特色頁直接爬取的回饋率 ──
-        feature_ch = get_best_feature_channel(card_id, channel_id)
-        if feature_ch and feature_ch.get("cashback_rate") is not None:
-            rate = feature_ch.get("cashback_rate")
-            cap  = feature_ch.get("max_cashback_per_period")
-            est  = calc_estimated_cashback(amount, rate, cap) if amount > 0 else None
-            results.append({
-                "card_id":              card_id,
-                "card_name":            card["card_name"],
-                "cashback_rate":        rate,
-                "cashback_type":        feature_ch.get("cashback_type", "cash"),
-                "cashback_description": feature_ch.get("cashback_description", ""),
-                "estimated_cashback":   est,
-                "max_cashback_per_period": cap,
-                "valid_end":            feature_ch.get("valid_end"),
-                "expiring_soon":        is_expiring_soon(feature_ch.get("valid_end")),
-                "conditions":           feature_ch.get("conditions", ""),
-                "data_source":          "card_feature",
-                "is_fallback":          feature_ch.get("is_fallback", False),
-            })
-            continue
-
-        # ── 最後 fallback：使用主資料集（API 行銷文案）──
+        # ── 查 channels（已合併 card_features + API）──
         best_ch = get_best_channel_for_card(card, channel_id)
         if best_ch is None:
             continue
@@ -152,7 +119,7 @@ def search_by_channel(
             "valid_end":            best_ch.get("valid_end"),
             "expiring_soon":        is_expiring_soon(best_ch.get("valid_end")),
             "conditions":           best_ch.get("conditions", ""),
-            "data_source":          "api",
+            "data_source":          best_ch.get("data_source", "api"),
             "is_fallback":          best_ch.get("is_fallback", False),
         })
 

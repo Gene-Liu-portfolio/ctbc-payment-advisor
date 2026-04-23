@@ -53,44 +53,45 @@ USER_STORIES: list[UserStory] = [
     UserStory(
         id=1,
         title="超商消費推薦（單通路）",
-        description="持有現金回饋鈦金卡 + LINE Pay 卡，詢問 7-11 最優刷法",
+        description="持有 uniopen + LINE Pay + 富邦富利生活卡，詢問 7-11 最優刷法",
         cards=[
-            {"card_id": "ctbc_b_cashback_titanium", "card_name": "中信現金回饋鈦金卡"},
-            {"card_id": "ctbc_c_linepay",            "card_name": "LINE Pay信用卡"},
+            {"card_id": "ctbc_c_uniopen",    "card_name": "uniopen聯名卡"},
+            {"card_id": "ctbc_c_linepay",    "card_name": "LINE Pay信用卡"},
+            {"card_id": "fubon_b_lifestyle", "card_name": "富邦富利生活卡"},
         ],
         user_input="我要去 7-11 買東西，大概花 500 元，哪張卡最優惠？",
-        expected_keywords=["LINE Pay", "現金回饋鈦金", "超商", "回饋", "7"],
+        expected_keywords=["uniopen", "LINE Pay", "超商", "回饋", "7"],
     ),
     UserStory(
         id=2,
         title="電商消費推薦",
-        description="持有現金回饋鈦金卡 + Yahoo 聯名卡，詢問網路購物最優刷法",
+        description="持有富邦momo卡 + 富邦Costco卡，詢問 momo 購物最優刷法",
         cards=[
-            {"card_id": "ctbc_b_cashback_titanium", "card_name": "中信現金回饋鈦金卡"},
-            {"card_id": "ctbc_c_yahoo",              "card_name": "Yahoo聯名卡"},
+            {"card_id": "fubon_c_momo",   "card_name": "富邦momo卡"},
+            {"card_id": "fubon_c_costco", "card_name": "富邦Costco聯名卡"},
         ],
-        user_input="我要在 Yahoo 購物網站買東西，大概花 2000 元，哪張卡回饋比較多？",
-        expected_keywords=["Yahoo", "電商", "購物", "回饋", "2000"],
+        user_input="我要在 momo 購物網站買東西，大概花 2000 元，哪張卡回饋比較多？",
+        expected_keywords=["momo", "電商", "回饋", "2000", "3%"],
     ),
     UserStory(
         id=3,
         title="多卡全通路比較",
-        description="持有三張卡，詢問各卡最適合的使用場合",
+        description="持有三張卡（中信+富邦），詢問各卡最適合的使用場合",
         cards=[
-            {"card_id": "ctbc_b_cashback_titanium", "card_name": "中信現金回饋鈦金卡"},
-            {"card_id": "ctbc_c_linepay",            "card_name": "LINE Pay信用卡"},
-            {"card_id": "ctbc_c_fp",                 "card_name": "foodpanda聯名卡"},
+            {"card_id": "ctbc_c_linepay",     "card_name": "LINE Pay信用卡"},
+            {"card_id": "fubon_c_j",          "card_name": "富邦J卡"},
+            {"card_id": "fubon_b_lifestyle",  "card_name": "富邦富利生活卡"},
         ],
         user_input="我有這三張卡，各自最適合用在哪些場合？幫我整理一下使用建議。",
-        expected_keywords=["LINE Pay", "foodpanda", "現金回饋", "建議"],
+        expected_keywords=["LINE Pay", "富邦J", "富利生活", "建議"],
     ),
     UserStory(
         id=4,
         title="快到期優惠查詢",
         description="查詢持有卡中即將到期的優惠活動",
         cards=[
-            {"card_id": "ctbc_b_cashback_titanium", "card_name": "中信現金回饋鈦金卡"},
-            {"card_id": "ctbc_c_linepay",            "card_name": "LINE Pay信用卡"},
+            {"card_id": "ctbc_c_linepay",  "card_name": "LINE Pay信用卡"},
+            {"card_id": "fubon_c_j",       "card_name": "富邦J卡"},
         ],
         user_input="我的卡片最近有哪些優惠快到期了？請幫我列出來。",
         expected_keywords=["優惠", "到期", "活動", "卡"],
@@ -100,15 +101,38 @@ USER_STORIES: list[UserStory] = [
         title="複合情境自動拆解",
         description="同一天有兩筆不同通路消費，詢問各別最優刷卡方式",
         cards=[
-            {"card_id": "ctbc_b_cashback_titanium", "card_name": "中信現金回饋鈦金卡"},
-            {"card_id": "ctbc_c_linepay",            "card_name": "LINE Pay信用卡"},
-            {"card_id": "ctbc_c_fp",                 "card_name": "foodpanda聯名卡"},
+            {"card_id": "ctbc_c_hanshin",    "card_name": "漢神聯名卡"},
+            {"card_id": "ctbc_c_uniopen",    "card_name": "uniopen聯名卡"},
+            {"card_id": "fubon_b_lifestyle", "card_name": "富邦富利生活卡"},
         ],
         user_input=(
             "今天要去全聯買菜大概花 3000 元，晚上還要訂 foodpanda 外送，"
             "請幫我建議這兩筆消費分別要刷哪張卡最划算？"
         ),
         expected_keywords=["全聯", "foodpanda", "超市", "外送", "建議"],
+    ),
+    UserStory(
+        id=6,
+        title="海外消費情境",
+        description="出國旅遊，比較哪張卡海外消費最划算",
+        cards=[
+            {"card_id": "ctbc_c_linepay",   "card_name": "LINE Pay信用卡"},
+            {"card_id": "fubon_c_j",        "card_name": "富邦J卡"},
+            {"card_id": "fubon_c_j_travel", "card_name": "富邦J Travel卡"},
+        ],
+        user_input="我下個月要去日本旅遊，預計花 50000 元，哪張卡海外消費最划算？",
+        expected_keywords=["日本", "海外", "回饋", "卡"],
+    ),
+    UserStory(
+        id=7,
+        title="加油消費推薦",
+        description="持有中油聯名卡，詢問加油最優刷法",
+        cards=[
+            {"card_id": "ctbc_c_cpc",       "card_name": "中油聯名卡"},
+            {"card_id": "fubon_c_diamond",   "card_name": "富邦鑽保卡"},
+        ],
+        user_input="我要去中油加油，大概花 1500 元，用哪張卡比較好？",
+        expected_keywords=["中油", "加油", "卡"],
     ),
 ]
 
@@ -255,7 +279,7 @@ def main():
 
     console.print(Panel(
         "[bold cyan]CTBC Agent × MCP — User Story 測試[/bold cyan]\n"
-        "[dim]測試 5 個真實消費情境，驗證 Agent 回覆正確性[/dim]",
+        "[dim]測試 7 個真實消費情境，驗證 Agent 回覆正確性[/dim]",
         border_style="cyan",
     ))
 

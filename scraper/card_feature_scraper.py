@@ -93,7 +93,7 @@ def _parse_rate(text: str) -> Optional[float]:
 def _fetch_card_ids_from_api() -> list[str]:
     """從官方 cardlist API 取得所有現行卡片的 raw card ID（如 C_uniopen）。"""
     try:
-        r = requests.get(CARD_LIST_API, headers=_HTML_HEADERS, timeout=15)
+        r = requests.get(CARD_LIST_API, headers=_HTML_HEADERS, timeout=15, verify=False)
         r.raise_for_status()
         return [
             c["cardId"]
@@ -211,6 +211,7 @@ def scrape_direct(raw_card_ids: list[str] | None = None, dry_run: bool = False) 
     results: dict = {}
     sess = requests.Session()
     sess.headers.update(_HTML_HEADERS)
+    sess.verify = False
 
     for raw_id in raw_card_ids:
         url = f"{CARD_CONTENT_BASE}/{raw_id}.html"
@@ -338,7 +339,7 @@ async def scrape_with_cookies(cookies_path: str, card_ids: list[str] | None = No
     # 取得所有卡片 card_id 列表
     if not card_ids:
         import requests
-        r = requests.get(CARD_LIST_API, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        r = requests.get(CARD_LIST_API, headers={"User-Agent": "Mozilla/5.0"}, timeout=10, verify=False)
         card_ids = [c["cardId"] for c in r.json().get("creditCards", [])]
 
     results: dict = {}
@@ -395,7 +396,7 @@ async def scrape_interactive(card_id: str | None = None):
         return
 
     import requests
-    r = requests.get(CARD_LIST_API, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+    r = requests.get(CARD_LIST_API, headers={"User-Agent": "Mozilla/5.0"}, timeout=10, verify=False)
     all_cards = [c["cardId"] for c in r.json().get("creditCards", [])]
     card_ids = [card_id] if card_id else all_cards
 

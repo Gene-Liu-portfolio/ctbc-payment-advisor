@@ -1,10 +1,289 @@
 {
-  "version": "1.0",
-  "last_updated": "2026-04-21",
-  "source": "CTBC 信用卡微型網站",
-  "cards": {
-    "ctbc_c_linepay": {
+  "version": "2.0",
+  "description": "合併自 ctbc_cards + fubon_cards + card_features + microsite_deals",
+  "last_updated": "2026-04-22",
+  "merge_sources": {
+    "ctbc_cards": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/processed/ctbc_cards.json",
+    "fubon_cards": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/processed/fubon_cards.json",
+    "card_features": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/scraped/card_features.json",
+    "microsite_deals": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/scraped/microsite_deals.json"
+  },
+  "cards": [
+    {
+      "card_id": "ctbc_c_hanshin",
+      "card_name": "漢神聯名卡",
+      "card_status": "active",
+      "card_org": "Mastercard",
+      "annual_fee": null,
+      "annual_fee_waiver": null,
+      "card_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/cc_index/cc_product/cc_introduction_index/C_HanShin.html",
+      "apply_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/onlinecounter_index/cc_service/cc_service_card_index/cc_service_card_apply.html?CrdTp=A03&Crd=C_HanShin&CrdF=&Lmt=&Chnl=&Emp=&Unit=&SPC=&Seed=",
+      "tags": [
+        "餐飲美食",
+        "生活量販",
+        "行動支付",
+        "國外消費"
+      ],
+      "notes": null,
+      "data_source": "api",
+      "last_verified": null,
+      "channels": [
+        {
+          "channel_id": "overseas_general",
+          "channel_name": "海外消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.02,
+          "cashback_description": "國外消費最高2%(等值)回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "國外消費最高2%(等值)回饋",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "dining",
+          "channel_name": "餐飲",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.1,
+          "cashback_description": "館內指定餐飲最高10%回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "館內指定餐飲最高10%回饋",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "travel",
+          "channel_name": "旅遊",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": null,
+          "cashback_description": "漢來美食/漢來大飯店專屬優惠",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "漢來美食/漢來大飯店專屬優惠",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.03,
+          "cashback_type": "cash",
+          "cashback_description": "最高3%回饋",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.03,
+          "cashback_type": "points",
+          "cashback_description": "※漢神洲際館內消費最高3%含館內一般消費1%基本回饋(無上限)+2%加碼回饋(極緻卡每月上限7,500點，晶緻卡每月上限2,500點)。",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        }
+      ]
+    },
+    {
+      "card_id": "ctbc_c_uniopen",
+      "card_name": "uniopen聯名卡",
+      "card_status": "active",
+      "card_org": "Mastercard",
+      "annual_fee": null,
+      "annual_fee_waiver": null,
+      "card_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/cc_index/cc_product/cc_introduction_index/C_uniopen.html",
+      "apply_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/onlinecounter_index/cc_service/cc_service_card_index/cc_service_card_apply.html?CrdTp=&Crd=C_uniopen",
+      "tags": [
+        "餐飲美食",
+        "生活量販",
+        "行動支付",
+        "國外消費",
+        "網路購物",
+        "外送平台"
+      ],
+      "notes": null,
+      "data_source": "api",
+      "last_verified": null,
+      "channels": [
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.11,
+          "cashback_type": "cash",
+          "cashback_description": "免領券，消費天天最高雙11% OPENPOINT",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "convenience_store",
+          "cashback_rate": 0.04,
+          "cashback_type": "cash",
+          "cashback_description": "儲值交易不列入統一企業集團品牌加碼4%活動，惟星巴克線上儲值適用期間至115/6/30止。",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "overseas_general",
+          "cashback_rate": 0.08,
+          "cashback_type": "cash",
+          "cashback_description": "國外實體商店消費再加碼8%",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "mobile_payment",
+          "cashback_rate": 0.04,
+          "cashback_type": "cash",
+          "cashback_description": "綁定icash Pay消費最高加碼4%",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "convenience_store",
+          "cashback_rate": 0.06,
+          "cashback_type": "points",
+          "cashback_description": "小C 於1/1於康是美消費NT500元、1/3於統一超商消費NT100元、1/5日於統一時代百貨消費NT1,000元、1/20於星巴克使用icash Pay綁定uniopen聯名卡消費NT100元，總共消費4個品牌，可獲得6%回饋，預計將回饋106點OPENPOINT。",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        }
+      ]
+    },
+    {
+      "card_id": "ctbc_c_cs",
+      "card_name": "遠東SOGO聯名卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": null,
+      "annual_fee_waiver": null,
+      "card_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/cc_index/cc_product/cc_introduction_index/C_CS.html",
+      "apply_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/onlinecounter_index/cc_service/cc_service_card_index/cc_service_card_apply.html?CrdTp=&Crd=C_CS",
+      "tags": [
+        "生活量販",
+        "國外消費"
+      ],
+      "notes": null,
+      "data_source": "api",
+      "last_verified": null,
+      "channels": [
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.15,
+          "cashback_type": "cash",
+          "cashback_description": "大巨蛋秀泰影城天天15%",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "dining",
+          "cashback_rate": 0.2,
+          "cashback_type": "cash",
+          "cashback_description": "店內餐飲最高20%",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "mobile_payment",
+          "cashback_rate": 0.1,
+          "cashback_type": "cash",
+          "cashback_description": "遠東SOGO聯名卡之悠遊卡當月使用自動加值滿NT500元享10% SOGO金回饋，每月享最高回饋50元。",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "overseas_general",
+          "cashback_rate": 0.005,
+          "cashback_type": "cash",
+          "cashback_description": "遠東SOGO聯名卡國內外一般消費享0.5% SOGO金回饋無上限；國外實體商店消費2% SOGO金回饋無上限。",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.005,
+          "cashback_type": "points",
+          "cashback_description": "點數累計以消費金額*回饋%並四捨五入至整數為止。回饋舉例：小A持有御璽卡於4/5在館內消費NT10,205元，商店於4/10完成請款，4月總計回饋306元SOGO金，計算如下：基本回饋：NT10,205元x0.5%=51.025元SOGO金，四捨五入後為51元。加碼回饋：NT10,205元x2.5%",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        }
+      ]
+    },
+    {
+      "card_id": "ctbc_c_linepay",
       "card_name": "LINE Pay信用卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": null,
+      "annual_fee_waiver": null,
+      "card_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/cc_index/cc_product/cc_introduction_index/C_LINEPay.html",
+      "apply_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/onlinecounter_index/cc_service/cc_service_card_index/cc_service_card_apply.html?CrdTp=A02&Crd=C_LINEPay&Fac=&Brnd=&Grnd=&CrdF=8715&Lmt=0&Chnl=&Emp=&Unit=&SPC=&Seed=8715W0008",
+      "tags": [
+        "餐飲美食",
+        "生活量販",
+        "行動支付",
+        "國外消費",
+        "訂閱/遊戲",
+        "網路購物"
+      ],
+      "notes": null,
+      "data_source": "api",
+      "last_verified": null,
+      "channels": [
+        {
+          "channel_id": "travel",
+          "channel_name": "旅遊",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": null,
+          "cashback_description": "#Hen貼心 旅行有保障",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "#Hen貼心 旅行有保障",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.16,
+          "cashback_type": "cash",
+          "cashback_description": "最高享16%回饋 天天回饋無上限",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "overseas_general",
+          "cashback_rate": 0.027999999999999997,
+          "cashback_type": "cash",
+          "cashback_description": "國外實體商店消費最高2.8%回饋(限信用卡)",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        }
+      ],
       "deals": [
         {
           "merchant": "精選飯店/餐廳",
@@ -4435,6 +4714,660 @@
           "source_page": "page_travel"
         }
       ]
+    },
+    {
+      "card_id": "ctbc_c_cal",
+      "card_name": "中華航空聯名卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": null,
+      "annual_fee_waiver": null,
+      "card_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/cc_index/cc_product/cc_introduction_index/C_CAL.html",
+      "apply_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/onlinecounter_index/cc_service/cc_service_card_index/cc_service_card_apply.html?CrdTp=A04&Crd=C_CAL&CrdF=&Lmt=&Chnl=&Emp=&Unit=&SPC=&Seed=",
+      "tags": [
+        "餐飲美食",
+        "行動支付",
+        "國外消費"
+      ],
+      "notes": null,
+      "data_source": "api",
+      "last_verified": null,
+      "channels": [
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": null,
+          "cashback_description": "生日當月消費最優 NT6 元回饋 1 哩",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "生日當月消費最優 NT6 元回饋 1 哩",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "overseas_general",
+          "channel_name": "海外消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": null,
+          "cashback_description": "免費國際機場接送服務最高享6次",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "免費國際機場接送服務最高享6次",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "dining",
+          "channel_name": "餐飲",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": null,
+          "cashback_description": "指定五星餐飲平日用餐享85折起",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "指定五星餐飲平日用餐享85折起",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "travel",
+          "cashback_rate": 0.1,
+          "cashback_type": "cash",
+          "cashback_description": "3.本優惠限刷實體中國信託中華航空鼎尊無限卡/璀璨無限卡。每卡每日限享本優惠乙次，全單折扣優惠是依消費定價計算，另收定價10%服務費。",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        }
+      ]
+    },
+    {
+      "card_id": "ctbc_c_cpc",
+      "card_name": "中油聯名卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": null,
+      "annual_fee_waiver": null,
+      "card_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/cc_index/cc_product/cc_introduction_index/C_CPC.html",
+      "apply_url": "https://www.ctbcbank.com/content/twrbo/zh_tw/onlinecounter_index/cc_service/cc_service_card_index/cc_service_card_apply.html?CrdTp=A04&Crd=C_CPC&CrdF=8515&Lmt=&Chnl=&Emp=&Unit=&SPC=&Seed=",
+      "tags": [
+        "行動支付"
+      ],
+      "notes": null,
+      "data_source": "api",
+      "last_verified": null,
+      "channels": [
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "points",
+          "cashback_rate": null,
+          "cashback_description": "紅利點數最高3倍回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "紅利點數最高3倍回饋",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "gas_station",
+          "channel_name": "加油站",
+          "merchants": [
+            "中油"
+          ],
+          "cashback_type": "points",
+          "cashback_rate": null,
+          "cashback_description": "綁定中油Pay加油消費累積雙點數",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "綁定中油Pay加油消費累積雙點數",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "gas_station",
+          "channel_name": "加油站",
+          "merchants": [
+            "中油"
+          ],
+          "cashback_type": "cash",
+          "cashback_rate": null,
+          "cashback_description": "綁定中油Pay期間免年費",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "綁定中油Pay期間免年費",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": null,
+          "cashback_description": "快速便利",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "快速便利",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
+    },
+    {
+      "card_id": "fubon_c_j",
+      "bank_id": "fubon",
+      "card_name": "富邦J卡",
+      "card_status": "active",
+      "card_org": "JCB",
+      "annual_fee": 1800,
+      "annual_fee_waiver": "次年起符合以下任一條件免年費：年消費滿 6 萬元、年消費達 12 筆、辦理電子帳單/LINE Pay 綁定/存戶自動扣繳",
+      "card_url": "https://www.fubon.com/banking/personal/credit_card/all_card/omiyage/omiyage.htm",
+      "apply_url": "https://www.fubon.com/banking/personal/credit_card/all_card/omiyage/omiyage.htm",
+      "tags": [
+        "海外消費",
+        "日本",
+        "韓國",
+        "泰國",
+        "JCB",
+        "現金回饋",
+        "LINE POINTS"
+      ],
+      "notes": "分 J Cash（現金回饋）與 J Points（LINE POINTS，需綁 LINE Pay）兩種版本。日韓 JCB 特約商店長期 3% 現金回饋，Q1 活動加碼至 6%（需登錄，季上限 1,000 元）。泰國及其他海外 1%。不含便利商店（含行動支付）、全聯、Costco 等排除通路。",
+      "data_source": "manual_verified",
+      "last_verified": "2026-03-17",
+      "channels": [
+        {
+          "channel_id": "overseas_general",
+          "channel_name": "日韓海外加碼活動（Q1 2026）",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.06,
+          "cashback_description": "Q1 活動期間日韓消費加碼至最高 6%（基本 3% + 活動加碼 3%）",
+          "max_cashback_per_period": 1000,
+          "min_spend": 1000,
+          "conditions": "活動期間（2026/1/1-3/31）需每月登錄，單筆消費滿 1,000 元，每季回饋上限 1,000 元，限額 2 萬戶，額滿截止",
+          "valid_forever": false,
+          "valid_start": "2026-01-01",
+          "valid_end": "2026-03-31",
+          "expiring_soon": true,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般國內消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.01,
+          "cashback_description": "一般國內消費 1% 現金回饋（無上限）",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "不含便利商店（含行動支付）、全聯、Costco、YouTube/Spotify/TikTok/Apple/Google 平台訂閱費、保費、水電瓦斯費、稅款、醫療費等",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "insurance",
+          "channel_name": "保費繳納",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.005,
+          "cashback_description": "保費繳納 0.5% 現金回饋（與 0 利率分期方案擇一）",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "保費 0.5% 回饋與 0 利率分期方案互斥，擇一使用",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
+    },
+    {
+      "card_id": "fubon_c_j_travel",
+      "bank_id": "fubon",
+      "card_name": "富邦J Travel卡",
+      "card_status": "active",
+      "card_org": "JCB",
+      "annual_fee": 0,
+      "annual_fee_waiver": "永久免年費",
+      "card_url": "https://www.fubon.com/finance/personal/credit_card/jcard/jcard_travel.htm",
+      "apply_url": "https://www.fubon.com/finance/personal/credit_card/jcard/jcard_travel.htm",
+      "tags": [
+        "旅遊",
+        "海外消費",
+        "日本",
+        "韓國",
+        "機票",
+        "訂房",
+        "現金回饋"
+      ],
+      "notes": "JCB 卡組織，旅遊相關消費（機票、訂房、旅行社）最高 6%，日韓泰海外消費 3%，一般消費 1%",
+      "data_source": "manual",
+      "last_verified": "2026-03-16",
+      "channels": [
+        {
+          "channel_id": "travel",
+          "channel_name": "旅遊相關消費",
+          "merchants": [
+            "訂房網站",
+            "航空公司",
+            "旅行社"
+          ],
+          "cashback_type": "cash",
+          "cashback_rate": 0.06,
+          "cashback_description": "機票、訂房、旅行社等旅遊相關消費最高 6% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "限旅遊相關商店（航空公司、訂房平台、旅行社）消費，每月回饋上限 1,500 元",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "overseas_general",
+          "channel_name": "日韓泰海外消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.03,
+          "cashback_description": "日本、韓國、泰國等 JCB 特惠地區海外消費 3% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "限 JCB 特約海外商店消費",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般國內消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.01,
+          "cashback_description": "一般國內消費 1% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": null,
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
+    },
+    {
+      "card_id": "fubon_c_costco",
+      "bank_id": "fubon",
+      "card_name": "富邦Costco聯名卡",
+      "card_status": "active",
+      "card_org": "Mastercard",
+      "annual_fee": 0,
+      "annual_fee_waiver": "Costco 會員即享免年費",
+      "card_url": "https://www.fubon.com/finance/personal/credit_card/costco/costco.htm",
+      "apply_url": "https://www.fubon.com/finance/personal/credit_card/costco/costco.htm",
+      "tags": [
+        "好市多",
+        "Costco",
+        "量販店",
+        "現金回饋",
+        "網路購物"
+      ],
+      "notes": "Costco 實體門市 2%，Costco 網路購物 3%，其他消費 1%",
+      "data_source": "manual",
+      "last_verified": "2026-03-16",
+      "channels": [
+        {
+          "channel_id": "wholesale",
+          "channel_name": "Costco 實體門市",
+          "merchants": [
+            "Costco好市多"
+          ],
+          "cashback_type": "cash",
+          "cashback_rate": 0.02,
+          "cashback_description": "Costco 實體門市消費 2% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "限 Costco 好市多實體門市消費",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "ecommerce",
+          "channel_name": "Costco 網路購物",
+          "merchants": [
+            "Costco線上商店"
+          ],
+          "cashback_type": "cash",
+          "cashback_rate": 0.03,
+          "cashback_description": "Costco 線上購物消費 3% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "限 Costco 官方網路商店消費",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.01,
+          "cashback_description": "其他一般消費 1% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": null,
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
+    },
+    {
+      "card_id": "fubon_c_diamond",
+      "bank_id": "fubon",
+      "card_name": "富邦鑽保卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": 0,
+      "annual_fee_waiver": "永久免年費",
+      "card_url": "https://www.fubon.com/finance/personal/credit_card/diamond/diamond.htm",
+      "apply_url": "https://www.fubon.com/finance/personal/credit_card/diamond/diamond.htm",
+      "tags": [
+        "保費",
+        "保險",
+        "現金回饋",
+        "一般消費"
+      ],
+      "notes": "保險費 0.5%，一般消費 0.7%，無特別加碼通路",
+      "data_source": "manual",
+      "last_verified": "2026-03-16",
+      "channels": [
+        {
+          "channel_id": "insurance",
+          "channel_name": "保費繳納",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.005,
+          "cashback_description": "保費繳納 0.5% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "限保險費繳納消費",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.007,
+          "cashback_description": "一般消費 0.7% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": null,
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
+    },
+    {
+      "card_id": "fubon_c_momo",
+      "bank_id": "fubon",
+      "card_name": "富邦momo卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": 0,
+      "annual_fee_waiver": "永久免年費",
+      "card_url": "https://www.fubon.com/finance/personal/credit_card/momo/momo.htm",
+      "apply_url": "https://www.fubon.com/finance/personal/credit_card/momo/momo.htm",
+      "tags": [
+        "momo購物",
+        "網路購物",
+        "電商",
+        "現金回饋"
+      ],
+      "notes": "momo購物網最高 3%，一般國內消費 1%",
+      "data_source": "manual",
+      "last_verified": "2026-03-16",
+      "channels": [
+        {
+          "channel_id": "ecommerce",
+          "channel_name": "momo購物網",
+          "merchants": [
+            "momo購物網"
+          ],
+          "cashback_type": "cash",
+          "cashback_rate": 0.03,
+          "cashback_description": "momo購物網消費最高 3% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "限 momo 購物網消費，每月回饋上限 500 元",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.01,
+          "cashback_description": "一般消費 1% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": null,
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
+    },
+    {
+      "card_id": "fubon_b_lifestyle",
+      "bank_id": "fubon",
+      "card_name": "富邦富利生活卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": 1500,
+      "annual_fee_waiver": "年消費滿 12 萬元免年費",
+      "card_url": "https://www.fubon.com/finance/personal/credit_card/lifestyle/lifestyle.htm",
+      "apply_url": "https://www.fubon.com/finance/personal/credit_card/lifestyle/lifestyle.htm",
+      "tags": [
+        "超市",
+        "便利商店",
+        "餐廳",
+        "百貨",
+        "影音串流",
+        "生活消費",
+        "紅利點數"
+      ],
+      "notes": "8大生活通路（超市、超商、餐廳、百貨等）消費享 5 倍紅利，每點約 0.4 元，等效約 2%",
+      "data_source": "manual",
+      "last_verified": "2026-03-16",
+      "channels": [
+        {
+          "channel_id": "supermarket",
+          "channel_name": "超市消費",
+          "merchants": [
+            "全聯",
+            "頂好",
+            "家樂福"
+          ],
+          "cashback_type": "points",
+          "cashback_rate": 0.02,
+          "cashback_description": "超市消費 5 倍紅利點數，等效約 2% 回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "8大生活通路消費 5 倍紅利，每月合計紅利點數上限 5,000 點",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "convenience_store",
+          "channel_name": "超商消費",
+          "merchants": [
+            "7-ELEVEN",
+            "全家",
+            "萊爾富",
+            "OK超商"
+          ],
+          "cashback_type": "points",
+          "cashback_rate": 0.02,
+          "cashback_description": "超商消費 5 倍紅利點數，等效約 2% 回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "8大生活通路消費 5 倍紅利，每月合計紅利點數上限 5,000 點",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "dining",
+          "channel_name": "餐廳消費",
+          "merchants": [],
+          "cashback_type": "points",
+          "cashback_rate": 0.02,
+          "cashback_description": "餐廳消費 5 倍紅利點數，等效約 2% 回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "8大生活通路消費 5 倍紅利，每月合計紅利點數上限 5,000 點",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "points",
+          "cashback_rate": 0.004,
+          "cashback_description": "一般消費 1 倍紅利點數，等效約 0.4% 回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": null,
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
+    },
+    {
+      "card_id": "fubon_c_twm",
+      "bank_id": "fubon",
+      "card_name": "台灣大哥大Open Possible聯名卡",
+      "card_status": "active",
+      "card_org": "VISA",
+      "annual_fee": 0,
+      "annual_fee_waiver": "永久免年費",
+      "card_url": "https://www.fubon.com/finance/personal/credit_card/twm/twm.htm",
+      "apply_url": "https://www.fubon.com/finance/personal/credit_card/twm/twm.htm",
+      "tags": [
+        "台灣大哥大",
+        "電信費",
+        "超商",
+        "現金回饋"
+      ],
+      "notes": "台灣大哥大消費（含電信費、myVideo等）3.5%，其他消費 1%",
+      "data_source": "manual",
+      "last_verified": "2026-03-16",
+      "channels": [
+        {
+          "channel_id": "telecom",
+          "channel_name": "台灣大哥大消費",
+          "merchants": [
+            "台灣大哥大",
+            "台灣之星",
+            "myVideo"
+          ],
+          "cashback_type": "cash",
+          "cashback_rate": 0.035,
+          "cashback_description": "台灣大哥大相關消費（電信費、myVideo、TWM門市）3.5% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": "限台灣大哥大電信費及相關消費，每月回饋上限 350 元",
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        },
+        {
+          "channel_id": "general",
+          "channel_name": "一般消費",
+          "merchants": [],
+          "cashback_type": "cash",
+          "cashback_rate": 0.01,
+          "cashback_description": "一般消費 1% 現金回饋",
+          "max_cashback_per_period": null,
+          "min_spend": null,
+          "conditions": null,
+          "valid_forever": true,
+          "valid_start": null,
+          "valid_end": null,
+          "expiring_soon": false,
+          "data_source": "api"
+        }
+      ]
     }
-  }
+  ]
 }

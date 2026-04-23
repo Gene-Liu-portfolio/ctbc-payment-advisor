@@ -16,15 +16,76 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+import re
+
 import gradio as gr
 from dotenv import load_dotenv
 from groq import Groq
 
 load_dotenv()
 
-from mcp_server.tools.search import _resolve_channel, _channel_display_name
-from mcp_server.tools.recommend import _extract_channels
 from agent.mcp_bridge import _call_tool, _get_cards_menu_remote
+
+
+# ── 通路解析（純前端，不依賴 MCP Server 內部模組）────────────────────────────
+
+_CHANNEL_NAMES = {
+    "convenience_store": "超商",    "supermarket": "超市／量販",
+    "ecommerce": "電商",            "food_delivery": "外送",
+    "transport": "交通",            "dining": "餐飲",
+    "travel": "旅遊",              "entertainment": "娛樂",
+    "gas_station": "加油站",        "pharmacy": "藥妝",
+    "mobile_payment": "行動支付",   "general": "一般消費",
+    "overseas_general": "海外消費",
+}
+
+_QUICK_CHANNEL_MAP: list[tuple[str, str, str]] = [
+    # (regex, display_name, channel_id)
+    (r"7-?11|小7|seven|統一超商", "7-ELEVEN", "convenience_store"),
+    (r"全家|family\s*mart", "全家", "convenience_store"),
+    (r"萊爾富|hi-?life", "萊爾富", "convenience_store"),
+    (r"全聯", "全聯", "supermarket"),
+    (r"家樂福|carrefour", "家樂福", "supermarket"),
+    (r"好市多|costco", "COSTCO", "supermarket"),
+    (r"大潤發", "大潤發", "supermarket"),
+    (r"蝦皮|shopee", "蝦皮", "ecommerce"),
+    (r"momo", "momo購物", "ecommerce"),
+    (r"pchome", "PChome", "ecommerce"),
+    (r"yahoo購物|奇摩購物", "Yahoo購物中心", "ecommerce"),
+    (r"博客來", "博客來", "ecommerce"),
+    (r"uber\s*eats|優食", "Uber Eats", "food_delivery"),
+    (r"foodpanda|熊貓", "foodpanda", "food_delivery"),
+    (r"台鐵|火車", "台鐵", "transport"),
+    (r"高鐵|thsr", "高鐵", "transport"),
+    (r"捷運|mrt", "台北捷運", "transport"),
+    (r"麥當勞|mcdonald", "麥當勞", "dining"),
+    (r"星巴克|starbucks", "星巴克", "dining"),
+    (r"路易莎|louisa", "路易莎", "dining"),
+    (r"航空|機票|飛機", "旅遊", "travel"),
+    (r"飯店|訂房|agoda|booking", "旅遊", "travel"),
+    (r"中油|加油", "中油", "gas_station"),
+    (r"屈臣氏|watsons", "屈臣氏", "pharmacy"),
+    (r"康是美|cosmed", "康是美", "pharmacy"),
+    (r"line\s*pay", "LINE Pay", "mobile_payment"),
+    (r"街口", "街口支付", "mobile_payment"),
+    (r"apple\s*pay", "Apple Pay", "mobile_payment"),
+]
+
+
+def _extract_channels(text: str) -> list[tuple[str, str]]:
+    """從情境文字抽取通路，回傳 [(display_name, channel_id)]。"""
+    text_lower = text.lower()
+    found: list[tuple[str, str]] = []
+    seen_cids: set[str] = set()
+    for pattern, name, cid in _QUICK_CHANNEL_MAP:
+        if re.search(pattern, text_lower) and cid not in seen_cids:
+            seen_cids.add(cid)
+            found.append((name, cid))
+    return found
+
+
+def _channel_display_name(channel_id: str, fallback: str) -> str:
+    return _CHANNEL_NAMES.get(channel_id, fallback)
 
 # ── Groq 客戶端（海外辨識用） ─────────────────────────────────────────────────
 
@@ -323,20 +384,19 @@ def recommend(
     step += 1
 
     # ── Step 2：通路識別 ──────────────────────────────────────────────
-    raw_channels = _extract_channels(scenario)
-    if not raw_channels:
-        raw_channels = ["一般消費"]
+    extracted = _extract_channels(scenario)
 
-    seen: set[str] = set()
     parsed: list[tuple[str, str]] = []
+    seen: set[str] = set()
     if is_overseas:
         seen.add("overseas_general")
         parsed.append(("海外消費", "overseas_general"))
-    for ch_name in raw_channels:
-        cid = _resolve_channel(ch_name)
+    for ch_name, cid in extracted:
         if cid not in seen:
             seen.add(cid)
             parsed.append((_channel_display_name(cid, ch_name), cid))
+    if not parsed:
+        parsed.append(("一般消費", "general"))
 
     ch_list = "、".join(f"`{cid}`（{disp}）" for disp, cid in parsed)
     log.append(
@@ -476,7 +536,7 @@ with gr.Blocks(title="💳 CTBC & 富邦信用卡支付建議系統") as demo:
     scenario_input.submit(fn=recommend, inputs=_inputs, outputs=[output, tool_log_output])
 
     gr.Markdown(
-        "---\n*資料來源：中信銀行官網 API（2026-03-07）+ 富邦銀行官網人工整理（2026-03-16）。"
+        "---\n*資料來源：中信銀行官網 API（2026-04-21）+ 富邦銀行官網人工整理（2026-03-16）。"
         "回饋率僅供參考，實際以各銀行官網公告為準。*"
     )
 

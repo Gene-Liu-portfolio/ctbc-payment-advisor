@@ -254,7 +254,7 @@ def scrape_card_microsite(card_id: str, config: dict) -> list[dict]:
     for page_name in pages:
         url = f"{MICROSITE_BASE}/{slug}/{page_name}.html"
         try:
-            r = requests.get(url, headers=HEADERS, timeout=15)
+            r = requests.get(url, headers=HEADERS, timeout=15, verify=False)
             r.raise_for_status()
             r.encoding = "utf-8"
         except requests.RequestException as e:

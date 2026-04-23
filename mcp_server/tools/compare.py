@@ -8,7 +8,7 @@ Tool 3：compare_cards
 from __future__ import annotations
 
 from ..utils.calculator import calc_estimated_cashback, is_expiring_soon
-from ..utils.data_loader import get_best_channel_for_card, get_cards_by_ids
+from ..utils.data_loader import get_best_channel_for_card, get_best_deal_for_card, get_cards_by_ids
 from .search import _resolve_channel, _CHANNEL_NAMES
 
 # 標準通路列表（依重要性排序）
@@ -98,21 +98,39 @@ def compare_cards(
         card_rates = []
 
         for card in owned_cards:
-            best_ch = get_best_channel_for_card(card, cid)
-            rate = best_ch.get("cashback_rate") if best_ch else None
-            cap  = best_ch.get("max_cashback_per_period") if best_ch else None
-            est  = calc_estimated_cashback(amount, rate, cap)
-
-            card_rates.append({
-                "card_id":              card["card_id"],
-                "card_name":            card["card_name"],
-                "cashback_rate":        rate,
-                "cashback_type":        best_ch.get("cashback_type", "cash") if best_ch else None,
-                "estimated_cashback":   est,
-                "max_cashback_per_period": cap,
-                "expiring_soon":        is_expiring_soon(best_ch.get("valid_end")) if best_ch else False,
-                "is_best":              False,  # 後面填
-            })
+            # 優先查 deals（microsite 商家促銷），再查 channels
+            deal = get_best_deal_for_card(card, cid)
+            if deal and deal.get("cashback_rate") is not None:
+                rate = deal["cashback_rate"]
+                cap  = None
+                est  = calc_estimated_cashback(amount, rate, cap)
+                card_rates.append({
+                    "card_id":              card["card_id"],
+                    "card_name":            card["card_name"],
+                    "cashback_rate":        rate,
+                    "cashback_type":        "cash",
+                    "estimated_cashback":   est,
+                    "max_cashback_per_period": cap,
+                    "expiring_soon":        is_expiring_soon(deal.get("valid_end")),
+                    "data_source":          "microsite",
+                    "is_best":              False,
+                })
+            else:
+                best_ch = get_best_channel_for_card(card, cid)
+                rate = best_ch.get("cashback_rate") if best_ch else None
+                cap  = best_ch.get("max_cashback_per_period") if best_ch else None
+                est  = calc_estimated_cashback(amount, rate, cap)
+                card_rates.append({
+                    "card_id":              card["card_id"],
+                    "card_name":            card["card_name"],
+                    "cashback_rate":        rate,
+                    "cashback_type":        best_ch.get("cashback_type", "cash") if best_ch else None,
+                    "estimated_cashback":   est,
+                    "max_cashback_per_period": cap,
+                    "expiring_soon":        is_expiring_soon(best_ch.get("valid_end")) if best_ch else False,
+                    "data_source":          best_ch.get("data_source", "api") if best_ch else None,
+                    "is_best":              False,
+                })
 
         # 標記最優卡
         best_rate = max(
