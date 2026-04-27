@@ -12,46 +12,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import type { CardMenuItem } from '../api';
 
-interface CreditCardItem {
-  id: string;
-  name: string;
-  bank: string;
-  lastFour: string;
-  type: string;
-  color: string;
-}
+// Reuse the same color map from CardSelectionPage
+const CARD_COLORS: Record<string, string> = {
+  ctbc_c_hanshin:      'from-[#C9A961] to-[#B8935A]',
+  ctbc_c_uniopen:      'from-[#D4AF77] to-[#C19A5B]',
+  ctbc_c_cs:           'from-[#CD7F32] to-[#B87333]',
+  ctbc_c_linepay:      'from-[#B76E79] to-[#A05D6A]',
+  ctbc_c_cal:          'from-[#E6D5B8] to-[#D4C4A8]',
+  ctbc_c_cpc:          'from-[#C4A485] to-[#B39476]',
+  fubon_c_j:           'from-[#C0C0C0] to-[#A8A8A8]',
+  fubon_c_j_travel:    'from-[#D4C5A9] to-[#C2B59B]',
+  fubon_c_costco:      'from-[#B8956A] to-[#A68355]',
+  fubon_c_diamond:     'from-[#B8B0A0] to-[#A89F90]',
+  fubon_c_momo:        'from-[#C4A69D] to-[#B39587]',
+  fubon_b_lifestyle:   'from-[#B8A890] to-[#A89880]',
+  fubon_c_twm:         'from-[#E8DCC8] to-[#D8CCB8]',
+};
 
-const mockCards: CreditCardItem[] = [
-  // 中國信託銀行 (CTBC) - Premium gold palette
-  { id: '1', bank: '中國信託', name: 'uniopen 聯名卡', lastFour: '4321', type: '多功能', color: 'from-[#C9A961] to-[#B8935A]' },
-  { id: '2', bank: '中國信託', name: 'LINE Pay 信用卡', lastFour: '8765', type: '行動支付', color: 'from-[#B76E79] to-[#A05D6A]' },
-  { id: '3', bank: '中國信託', name: 'foodpanda 聯名卡', lastFour: '2468', type: '外送', color: 'from-[#D4AF77] to-[#C19A5B]' },
-  { id: '4', bank: '中國信託', name: 'ALL ME 卡', lastFour: '1357', type: '現金回饋', color: 'from-[#C4A485] to-[#B39476]' },
-  { id: '5', bank: '中國信託', name: '現金回饋御璽卡', lastFour: '9753', type: '現金回饋', color: 'from-[#CD7F32] to-[#B87333]' },
-  { id: '6', bank: '中國信託', name: '寰遊美國運通卡', lastFour: '8642', type: '旅遊', color: 'from-[#E6D5B8] to-[#D4C4A8]' },
-  // 富邦銀行 - Premium gold palette
-  { id: '7', bank: '富邦銀行', name: '富邦 J 卡', lastFour: '3698', type: '現金回饋', color: 'from-[#C0C0C0] to-[#A8A8A8]' },
-  { id: '8', bank: '富邦銀行', name: '富邦 J Travel 卡', lastFour: '7412', type: '旅遊', color: 'from-[#D4C5A9] to-[#C2B59B]' },
-  { id: '9', bank: '富邦銀行', name: '富邦 Costco 聯名卡', lastFour: '9517', type: '購物', color: 'from-[#B8956A] to-[#A68355]' },
-  { id: '10', bank: '富邦銀行', name: '富邦鑽保卡', lastFour: '3571', type: '保險', color: 'from-[#B8B0A0] to-[#A89F90]' },
-  { id: '11', bank: '富邦銀行', name: '富邦 momo 卡', lastFour: '1593', type: '電商', color: 'from-[#C4A69D] to-[#B39587]' },
-  { id: '12', bank: '富邦銀行', name: '富利生活卡', lastFour: '7539', type: '生活消費', color: 'from-[#B8A890] to-[#A89880]' },
-  { id: '13', bank: '富邦銀行', name: '台灣大哥大 Open Possible 聯名卡', lastFour: '8520', type: '電信', color: 'from-[#E8DCC8] to-[#D8CCB8]' },
-  // Additional cards to make 16 - Premium gold palette
-  { id: '14', bank: '中國信託', name: 'Home+ 聯名卡', lastFour: '6284', type: '購物', color: 'from-[#D4B5A0] to-[#C4A590]' },
-  { id: '15', bank: '富邦銀行', name: '富邦數位生活卡', lastFour: '4159', type: '數位消費', color: 'from-[#E8E0D0] to-[#D8D0C0]' },
-  { id: '16', bank: '中國信託', name: 'VISA 無限卡', lastFour: '2637', type: '頂級', color: 'from-[#AAA9AD] to-[#9A999D]' },
-];
+const BANK_NAMES: Record<string, string> = {
+  ctbc:  '中國信託',
+  fubon: '富邦銀行',
+};
 
 interface LeftSidebarProps {
   selectedCards: string[];
   onCardToggle: (cardId: string) => void;
   onScenarioClick: (scenario: string) => void;
   isCollapsed: boolean;
+  cards: CardMenuItem[];
 }
 
-export function LeftSidebar({ selectedCards, onCardToggle, onScenarioClick, isCollapsed }: LeftSidebarProps) {
+export function LeftSidebar({ selectedCards, onCardToggle, onScenarioClick, isCollapsed, cards }: LeftSidebarProps) {
   const [showFilters, setShowFilters] = useState(true);
 
   if (isCollapsed) return null;
@@ -65,35 +58,36 @@ export function LeftSidebar({ selectedCards, onCardToggle, onScenarioClick, isCo
             <CreditCard className="w-4 h-4" style={{ color: '#007C7C' }} />
             <h2 className="font-semibold text-sm" style={{ color: '#2C3E50' }}>我的信用卡</h2>
             <Badge variant="secondary" className="ml-auto text-xs">
-              {selectedCards.length}/{mockCards.length}
+              {selectedCards.length}/{cards.length}
             </Badge>
           </div>
 
           <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-            {mockCards.map((card) => (
+            {cards.map((card) => (
               <div
-                key={card.id}
+                key={card.card_id}
                 className="flex items-start gap-3 p-3 rounded-lg border bg-white hover:shadow-sm transition-all cursor-pointer"
                 style={{ borderColor: 'rgba(44, 62, 80, 0.08)' }}
-                onClick={() => onCardToggle(card.id)}
+                onClick={() => onCardToggle(card.card_id)}
               >
                 <Checkbox
-                  checked={selectedCards.includes(card.id)}
-                  onCheckedChange={() => onCardToggle(card.id)}
+                  checked={selectedCards.includes(card.card_id)}
+                  onCheckedChange={() => onCardToggle(card.card_id)}
                   className="mt-0.5"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className={`w-8 h-5 rounded bg-gradient-to-r ${card.color}`} />
+                    <div className={`w-8 h-5 rounded bg-gradient-to-r ${CARD_COLORS[card.card_id] ?? 'from-[#AAA9AD] to-[#9A999D]'}`} />
                     <span className="font-medium text-xs truncate" style={{ color: '#2C3E50' }}>
-                      {card.name}
+                      {card.card_name}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px]" style={{ color: '#6B7280' }}>{card.bank}</span>
-                    <span className="text-[10px]" style={{ color: '#9CA3AF' }}>•••• {card.lastFour}</span>
+                    <span className="text-[10px]" style={{ color: '#6B7280' }}>
+                      {BANK_NAMES[card.bank_id] ?? card.bank_id}
+                    </span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      {card.type}
+                      {card.tags[0] ?? '信用卡'}
                     </Badge>
                   </div>
                 </div>

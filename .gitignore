@@ -10,6 +10,7 @@ data/debug/*
 venv/
 .venv/
 dist/
+node_modules/
 ctbc_payment_advisor.egg-info/
 *.egg-info/
 nohup.out
