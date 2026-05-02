@@ -13,41 +13,23 @@ import {
   SelectValue,
 } from './ui/select';
 import type { CardMenuItem } from '../api';
+import { CARD_IMAGES, BANK_NAMES, CARD_COLORS } from '../../constants/cardConfig';
 
-// Reuse the same color map from CardSelectionPage
-const CARD_COLORS: Record<string, string> = {
-  ctbc_c_hanshin:      'from-[#C9A961] to-[#B8935A]',
-  ctbc_c_uniopen:      'from-[#D4AF77] to-[#C19A5B]',
-  ctbc_c_cs:           'from-[#CD7F32] to-[#B87333]',
-  ctbc_c_linepay:      'from-[#B76E79] to-[#A05D6A]',
-  ctbc_c_cal:          'from-[#E6D5B8] to-[#D4C4A8]',
-  ctbc_c_cpc:          'from-[#C4A485] to-[#B39476]',
-  fubon_c_j:           'from-[#C0C0C0] to-[#A8A8A8]',
-  fubon_c_j_travel:    'from-[#D4C5A9] to-[#C2B59B]',
-  fubon_c_costco:      'from-[#B8956A] to-[#A68355]',
-  fubon_c_diamond:     'from-[#B8B0A0] to-[#A89F90]',
-  fubon_c_momo:        'from-[#C4A69D] to-[#B39587]',
-  fubon_b_lifestyle:   'from-[#B8A890] to-[#A89880]',
-  fubon_c_twm:         'from-[#E8DCC8] to-[#D8CCB8]',
-};
-
-const BANK_NAMES: Record<string, string> = {
-  ctbc:  '中國信託',
-  fubon: '富邦銀行',
-};
 
 interface LeftSidebarProps {
   selectedCards: string[];
   onCardToggle: (cardId: string) => void;
+  onSelectAll: (cardIds: string[]) => void;
   onScenarioClick: (scenario: string) => void;
   isCollapsed: boolean;
   cards: CardMenuItem[];
 }
 
-export function LeftSidebar({ selectedCards, onCardToggle, onScenarioClick, isCollapsed, cards }: LeftSidebarProps) {
+export function LeftSidebar({ selectedCards, onCardToggle, onSelectAll, onScenarioClick, isCollapsed, cards }: LeftSidebarProps) {
   const [showFilters, setShowFilters] = useState(true);
 
   if (isCollapsed) return null;
+  const isAllSelected = cards.length > 0 && selectedCards.length === cards.length;
 
   return (
     <div className="w-80 h-full bg-white border-r flex flex-col overflow-hidden" style={{ borderColor: 'rgba(44, 62, 80, 0.08)' }}>
@@ -60,6 +42,20 @@ export function LeftSidebar({ selectedCards, onCardToggle, onScenarioClick, isCo
             <Badge variant="secondary" className="ml-auto text-xs">
               {selectedCards.length}/{cards.length}
             </Badge>
+          </div>
+
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <Checkbox
+              id="select-all"
+              checked={isAllSelected}
+              onCheckedChange={(checked) => {
+                // 如果打勾，傳入所有卡片的 ID；如果取消打勾，傳入空陣列
+                onSelectAll(checked ? cards.map(c => c.card_id) : []);
+              }}
+            />
+            <Label htmlFor="select-all" className="text-sm font-medium cursor-pointer" style={{ color: '#6B7280' }}>
+              全選
+            </Label>
           </div>
 
           <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
@@ -77,7 +73,17 @@ export function LeftSidebar({ selectedCards, onCardToggle, onScenarioClick, isCo
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className={`w-8 h-5 rounded bg-gradient-to-r ${CARD_COLORS[card.card_id] ?? 'from-[#AAA9AD] to-[#9A999D]'}`} />
+                    <div className="w-9 h-6 rounded flex-shrink-0 relative overflow-hidden shadow-sm border border-gray-100">
+                      {CARD_IMAGES[card.card_id] ? (
+                        <img 
+                          src={CARD_IMAGES[card.card_id]} 
+                          alt={card.card_name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-r ${CARD_COLORS[card.card_id] ?? 'from-[#AAA9AD] to-[#9A999D]'}`} />
+                      )}
+                    </div>                    
                     <span className="font-medium text-xs truncate" style={{ color: '#2C3E50' }}>
                       {card.card_name}
                     </span>

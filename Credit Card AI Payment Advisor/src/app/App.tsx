@@ -174,6 +174,7 @@ export default function App() {
       <CardSelectionPage
         selectedCards={selectedCards}
         onCardToggle={handleCardToggle}
+        onSelectAll={(cardIds) => setSelectedCards(cardIds)}
         onStart={handleStartChat}
         cards={allCards}
         loading={cardsLoading}
@@ -192,6 +193,7 @@ export default function App() {
         <LeftSidebar
           selectedCards={selectedCards}
           onCardToggle={handleCardToggle}
+          onSelectAll={(cardIds) => setSelectedCards(cardIds)}
           onScenarioClick={handleScenarioClick}
           isCollapsed={isSidebarCollapsed}
           cards={allCards}

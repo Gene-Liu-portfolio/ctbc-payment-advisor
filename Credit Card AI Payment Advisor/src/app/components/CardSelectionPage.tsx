@@ -1,46 +1,19 @@
 import { CreditCard, ArrowRight, Loader2 } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import type { CardMenuItem } from '../api';
-
-// card_id → gradient color mapping
-const CARD_COLORS: Record<string, string> = {
-  ctbc_c_hanshin:      'from-[#C9A961] to-[#B8935A]',
-  ctbc_c_uniopen:      'from-[#D4AF77] to-[#C19A5B]',
-  ctbc_c_cs:           'from-[#CD7F32] to-[#B87333]',
-  ctbc_c_linepay:      'from-[#B76E79] to-[#A05D6A]',
-  ctbc_c_cal:          'from-[#E6D5B8] to-[#D4C4A8]',
-  ctbc_c_cpc:          'from-[#C4A485] to-[#B39476]',
-  fubon_c_j:           'from-[#C0C0C0] to-[#A8A8A8]',
-  fubon_c_j_travel:    'from-[#D4C5A9] to-[#C2B59B]',
-  fubon_c_costco:      'from-[#B8956A] to-[#A68355]',
-  fubon_c_diamond:     'from-[#B8B0A0] to-[#A89F90]',
-  fubon_c_momo:        'from-[#C4A69D] to-[#B39587]',
-  fubon_b_lifestyle:   'from-[#B8A890] to-[#A89880]',
-  fubon_c_twm:         'from-[#E8DCC8] to-[#D8CCB8]',
-};
-
-const BANK_NAMES: Record<string, string> = {
-  ctbc:  '中國信託',
-  fubon: '富邦銀行',
-};
-
-function getCardColor(cardId: string): string {
-  return CARD_COLORS[cardId] ?? 'from-[#AAA9AD] to-[#9A999D]';
-}
-
-function getCardType(tags: string[]): string {
-  return tags[0] ?? '信用卡';
-}
+import { CARD_IMAGES, BANK_NAMES, getCardColor, getCardType } from '../../constants/cardConfig';
 
 interface CardSelectionPageProps {
   selectedCards: string[];
   onCardToggle: (cardId: string) => void;
+  onSelectAll: (cardIds: string[]) => void;
   onStart: () => void;
   cards: CardMenuItem[];
   loading: boolean;
 }
 
-export function CardSelectionPage({ selectedCards, onCardToggle, onStart, cards, loading }: CardSelectionPageProps) {
+export function CardSelectionPage({ selectedCards, onCardToggle, onSelectAll, onStart, cards, loading }: CardSelectionPageProps) {
+  const isAllSelected = cards.length > 0 && selectedCards.length === cards.length;
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ backgroundColor: '#F7F9F8' }}>
       <div className="w-full max-w-6xl">
@@ -65,14 +38,50 @@ export function CardSelectionPage({ selectedCards, onCardToggle, onStart, cards,
           </div>
         )}
 
-        {/* Card Grid */}
+        {/* Card Grid 區域 */}
         {!loading && (
           <div className="grid grid-cols-4 gap-4 mb-12">
+            
+            {/* 👇 這是特製的「全選卡片」，放在網格的第一格 */}
+            <div
+              onClick={() => {
+                if (isAllSelected) {
+                  onSelectAll([]); // 如果已經全選了，就清空
+                } else {
+                  onSelectAll(cards.map(c => c.card_id)); // 否則就全選
+                }
+              }}
+              className="bg-white rounded-xl p-5 border transition-all cursor-pointer hover:shadow-md flex flex-col justify-center"
+              style={{
+                borderColor: isAllSelected ? '#007C7C' : 'rgba(44, 62, 80, 0.08)',
+                borderWidth: isAllSelected ? '2px' : '1px',
+                boxShadow: isAllSelected ? '0 4px 16px rgba(0, 124, 124, 0.12)' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                backgroundColor: isAllSelected ? 'rgba(0, 124, 124, 0.02)' : '#ffffff'
+              }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Checkbox
+                  checked={isAllSelected}
+                  // 點擊 Checkbox 也是觸發外層的 onClick
+                  className="mt-0.5 relative z-10" 
+                />
+                <h3 className="font-semibold text-base" style={{ color: '#2C3E50' }}>
+                  {isAllSelected ? '取消全選' : '全選所有卡片'}
+                </h3>
+              </div>
+              <div className="mt-auto">
+                <div className="inline-block px-3 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(0, 124, 124, 0.1)', color: '#007C7C' }}>
+                  已選擇 {selectedCards.length} / {cards.length}
+                </div>
+              </div>
+            </div>
+
+            {/* 👇 原本的卡片列表，接在全選卡片後面 */}
             {cards.map((card) => (
               <div
                 key={card.card_id}
                 onClick={() => onCardToggle(card.card_id)}
-                className="bg-white rounded-xl p-5 border transition-all cursor-pointer hover:shadow-md group"
+                className="bg-white rounded-xl p-5 border transition-all cursor-pointer hover:shadow-md group relative overflow-hidden"
                 style={{
                   borderColor: selectedCards.includes(card.card_id) ? '#007C7C' : 'rgba(44, 62, 80, 0.08)',
                   borderWidth: selectedCards.includes(card.card_id) ? '2px' : '1px',
@@ -81,14 +90,33 @@ export function CardSelectionPage({ selectedCards, onCardToggle, onStart, cards,
               >
                 <div className="flex items-start gap-3 mb-3">
                   <Checkbox
-                    checked={selectedCards.includes(card.card_id)}
-                    onCheckedChange={() => onCardToggle(card.card_id)}
-                    className="mt-1"
+                  checked={isAllSelected}
+                  onClick={(e) => e.stopPropagation()} 
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      onSelectAll(cards.map(c => c.card_id)); // 打勾：全選
+                    } else {
+                      onSelectAll([]); // 取消打勾：清空
+                    }
+                  }}
+                  className="mt-0.5 relative z-10 cursor-pointer" 
                   />
-                  <div className={`w-12 h-8 rounded-md bg-gradient-to-r ${getCardColor(card.card_id)} flex-shrink-0`} />
+                  
+                  {/* 真實圖片渲染邏輯保持不變 */}
+                  <div className="w-[56px] h-[36px] rounded flex-shrink-0 relative overflow-hidden shadow-sm border border-gray-100">
+                    {CARD_IMAGES[card.card_id] ? (
+                      <img 
+                        src={CARD_IMAGES[card.card_id]} 
+                        alt={card.card_name} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className={`w-full h-full bg-gradient-to-r ${getCardColor(card.card_id)}`} />
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 relative z-10">
                   <h3 className="font-semibold text-sm leading-tight" style={{ color: '#2C3E50' }}>
                     {card.card_name}
                   </h3>
