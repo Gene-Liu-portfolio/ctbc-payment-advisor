@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 
 from .search import search_by_channel, _resolve_channel, _channel_display_name
+from ..utils.channel_mapper import MERCHANT_TO_CHANNEL, normalize_merchant
+from ..utils.llm_parser import parse_scenario, generate_reasons
 
 
 # ── 情境解析 ──────────────────────────────────────────────────────────────────
@@ -123,39 +125,80 @@ def recommend_payment(
     if not scenario or not scenario.strip():
         return _error("", "情境描述不可為空")
 
-    # 解析金額
-    amount = _extract_amount(scenario)
+    # ── 步驟 1：用 Claude 解析自然語言；失敗時 fallback 到 regex ──
+    parsed_channels: list[dict] = []
+    amount: float = 0.0
 
-    # 解析通路
-    raw_channels = _extract_channels(scenario)
+    llm_parsed = parse_scenario(scenario)
 
-    # 如果完全找不到通路，fallback 到一般消費
-    if not raw_channels:
-        raw_channels = ["一般消費"]
+    # 與系統無關的問題 → 直接回拒答訊息，不執行推薦
+    if llm_parsed is not None and not llm_parsed.get("is_consumption_scenario", True):
+        return {
+            "scenario": scenario,
+            "parsed":   {"channels": [], "amount": 0},
+            "recommendations":   [],
+            "off_topic_message": llm_parsed["off_topic_message"],
+            "error":             None,
+        }
 
-    # 去重後解析 channel_id
-    parsed_channels = []
-    seen_cids = set()
-    for ch_name in raw_channels:
-        cid = _resolve_channel(ch_name)
-        if cid not in seen_cids:
+    if llm_parsed is not None:
+        amount = llm_parsed["amount"]
+        seen_cids: set[str] = set()
+        for ch in llm_parsed["channels"]:
+            cid = ch["channel_id"]
+            if cid in seen_cids:
+                continue
+            seen_cids.add(cid)
+            parsed_channels.append({
+                "name": ch["merchant_or_keyword"] or _channel_display_name(cid, cid),
+                "channel_id": cid,
+            })
+    else:
+        # Fallback：原本的 regex 路徑
+        amount = _extract_amount(scenario)
+        raw_channels = _extract_channels(scenario) or ["一般消費"]
+        seen_cids = set()
+        for ch_name in raw_channels:
+            cid = _resolve_channel(ch_name)
+            if cid in seen_cids:
+                continue
             seen_cids.add(cid)
             parsed_channels.append({"name": ch_name, "channel_id": cid})
 
-    # 對每個解析出的通路執行 search_by_channel
+    # ── 步驟 2：對每個通路查最佳卡片 ──
     recommendations = []
     for ch in parsed_channels:
+        # 若 LLM 給的關鍵字本身就是已知商家（如「全聯」），優先用商家名以觸發
+        # microsite deals 的 merchant_hint 機制；否則直接用 channel_id 確保通路正確。
+        query = ch["channel_id"]
+        if ch["name"]:
+            normalized = normalize_merchant(ch["name"])
+            if normalized in MERCHANT_TO_CHANNEL:
+                query = ch["name"]
         result = search_by_channel(
-            channel=ch["name"],   # 保留商家名稱（如「全聯」）讓 merchant_hint 機制生效
+            channel=query,
             cards_owned=cards_owned,
             amount=amount,
             top_k=3,
         )
         if result.get("results"):
+            channel_name = _channel_display_name(ch["channel_id"], ch["name"])
+
+            # ── 步驟 3：用 Claude 為每張推薦卡產生中文理由（失敗則保留空 reason） ──
+            reasons = generate_reasons(
+                scenario=scenario,
+                channel_name=channel_name,
+                amount=amount,
+                recommendations=result["results"],
+            )
+            for r in result["results"]:
+                if reasons.get(r["card_id"]):
+                    r["reason"] = reasons[r["card_id"]]
+
             recommendations.append({
-                "channel_name": _channel_display_name(ch["channel_id"], ch["name"]),
+                "channel_name": channel_name,
                 "channel_id":   ch["channel_id"],
-                "best_options": result["results"], # 改成陣列，包含至多 3 筆推薦
+                "best_options": result["results"],
             })
 
     return {

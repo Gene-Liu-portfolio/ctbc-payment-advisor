@@ -90,16 +90,10 @@ export function CardSelectionPage({ selectedCards, onCardToggle, onSelectAll, on
               >
                 <div className="flex items-start gap-3 mb-3">
                   <Checkbox
-                  checked={isAllSelected}
-                  onClick={(e) => e.stopPropagation()} 
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      onSelectAll(cards.map(c => c.card_id)); // 打勾：全選
-                    } else {
-                      onSelectAll([]); // 取消打勾：清空
-                    }
-                  }}
-                  className="mt-0.5 relative z-10 cursor-pointer" 
+                    checked={selectedCards.includes(card.card_id)}
+                    onClick={(e) => e.stopPropagation()}
+                    onCheckedChange={() => onCardToggle(card.card_id)}
+                    className="mt-0.5 relative z-10 cursor-pointer"
                   />
                   
                   {/* 真實圖片渲染邏輯保持不變 */}

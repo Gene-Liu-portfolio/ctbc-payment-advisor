@@ -59,7 +59,7 @@ function toRecommendation(r: SearchResult, rank: number, channel: string): Recom
     monthlyCap: cap,
     expirationDate: r.valid_end ?? '長期有效',
     conditions,
-    reason: r.cashback_description || `此卡在「${channel}」通路的回饋率為 ${rate}。`,
+    reason: r.reason || r.cashback_description || `此卡在「${channel}」通路的回饋率為 ${rate}。`,
     color: RANK_COLORS[rank - 1] ?? RANK_COLORS[2],
     badges: badges.length > 0 ? badges : undefined,
   };
@@ -130,6 +130,15 @@ export default function App() {
         setMessages((prev) => [
           ...prev,
           { role: 'assistant', content: `抱歉，查詢時發生錯誤：${data.error}` },
+        ]);
+        return;
+      }
+
+      // 與信用卡無關的提問 → 顯示拒答訊息，不渲染推薦卡
+      if (data.off_topic_message) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: data.off_topic_message! },
         ]);
         return;
       }

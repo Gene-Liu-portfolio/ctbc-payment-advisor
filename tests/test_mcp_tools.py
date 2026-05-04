@@ -40,7 +40,7 @@ CTBC_CARDS = [
     "ctbc_c_linepay", "ctbc_c_cal", "ctbc_c_cpc",
 ]
 FUBON_CARDS = [
-    "fubon_c_j", "fubon_c_j_travel", "fubon_c_costco",
+    "fubon_c_j", "fubon_c_guardians", "fubon_c_costco",
     "fubon_c_diamond", "fubon_c_momo", "fubon_b_lifestyle", "fubon_c_twm",
 ]
 ALL_CARD_IDS = CTBC_CARDS + FUBON_CARDS
@@ -145,9 +145,9 @@ class TestDataLoader:
         assert summary["version"] == "2.0"
 
     def test_get_best_channel_for_card_exists(self):
-        """fubon_b_lifestyle 在 convenience_store 有 2% 回饋"""
+        """fubon_b_lifestyle 在 supermarket 有 2% 回饋（8 大生活通路）"""
         card = get_card_by_id("fubon_b_lifestyle")
-        best = get_best_channel_for_card(card, "convenience_store")
+        best = get_best_channel_for_card(card, "supermarket")
         assert best is not None
         assert best["cashback_rate"] == 0.02
         assert best["is_fallback"] is False
@@ -350,8 +350,9 @@ class TestRecommendPayment:
         assert result["error"] is None
         if result["recommendations"]:
             rec = result["recommendations"][0]
-            assert "best_card" in rec
-            assert "card_id" in rec["best_card"]
+            assert "best_options" in rec
+            assert len(rec["best_options"]) >= 1
+            assert "card_id" in rec["best_options"][0]
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -447,10 +448,10 @@ class TestPromotionsAndDetails:
         result = get_card_details(card_id="fubon_b_lifestyle")
         channels = result["channels"]
         assert len(channels) >= 1
-        # fubon_b_lifestyle 應有 supermarket, convenience_store, dining, general
+        # fubon_b_lifestyle 8 大生活通路：百貨、量販、超市、餐飲、加油、旅遊
         channel_ids = {ch["channel_id"] for ch in channels}
         assert "supermarket" in channel_ids
-        assert "convenience_store" in channel_ids
+        assert "dining" in channel_ids
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -482,40 +483,32 @@ class TestAccuracy:
         assert r["cashback_rate"] == 0.03
         assert r["estimated_cashback"] == 60.0
 
-    def test_fubon_j_overseas_fallback(self):
-        """富邦J卡 Q1 海外活動已到期（2026-03-31），應 fallback 到 general 1%"""
+    def test_fubon_j_overseas_6pct(self):
+        """富邦J卡海外消費 Q4 加碼活動有效期內，應有 6%（基本 3% + 加碼 3%）"""
         result = search_by_channel("overseas_general", cards_owned=["fubon_c_j"], amount=10000)
         assert result["error"] is None
         assert len(result["results"]) == 1
         r = result["results"][0]
-        # 6% 活動已到期被過濾，fallback 到 general 1%
-        assert r["cashback_rate"] == 0.01
-        assert r["is_fallback"] is True
+        assert r["cashback_rate"] == 0.06
+        assert r["is_fallback"] is False
+        assert r["estimated_cashback"] == 600.0
 
-    def test_fubon_momo_ecommerce_3pct(self):
-        """富邦momo卡在電商應有 3% 回饋"""
+    def test_fubon_momo_ecommerce_7pct(self):
+        """富邦momo卡在 momo 購物網應有 7% mo 幣回饋"""
         result = search_by_channel("電商", cards_owned=["fubon_c_momo"], amount=3000)
         assert result["error"] is None
         r = result["results"][0]
-        assert r["cashback_rate"] == 0.03
-        assert r["estimated_cashback"] == 90.0
-
-    def test_fubon_j_travel_travel_6pct(self):
-        """富邦J Travel卡在旅遊應有 6% 回饋"""
-        result = search_by_channel("旅遊", cards_owned=["fubon_c_j_travel"], amount=20000)
-        assert result["error"] is None
-        r = result["results"][0]
-        assert r["cashback_rate"] == 0.06
-        assert r["estimated_cashback"] == 1200.0
+        assert r["cashback_rate"] == 0.07
+        assert r["estimated_cashback"] == 210.0
 
     def test_ranking_ecommerce_momo_vs_costco(self):
-        """電商比較：momo 和 costco 都是 3%，應並列"""
+        """電商比較：momo 7% 應排在 costco 3% 前面"""
         result = search_by_channel(
             "電商", cards_owned=["fubon_c_momo", "fubon_c_costco"], amount=1000,
         )
         assert result["error"] is None
         rates = [r["cashback_rate"] for r in result["results"]]
-        assert rates[0] == 0.03
+        assert rates[0] == 0.07
         assert rates[1] == 0.03
 
     def test_compare_dining_hanshin_best(self):
