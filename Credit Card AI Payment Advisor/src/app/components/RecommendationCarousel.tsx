@@ -2,8 +2,10 @@ import { Trophy, TrendingUp, Calendar, AlertCircle, CheckCircle2, ChevronLeft, C
 import { Badge } from './ui/badge';
 import { useRef } from 'react';
 import { Button } from './ui/button';
+import { CARD_IMAGES } from '../../constants/cardConfig';
 
 interface Recommendation {
+  cardId: string;
   rank: number;
   cardName: string;
   channel: string;
@@ -96,7 +98,18 @@ export function RecommendationCarousel({ recommendations }: RecommendationCarous
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-7 rounded-md bg-gradient-to-r ${rec.color}`} />
+                  <div className="w-[56px] h-[36px] rounded flex-shrink-0 relative overflow-hidden shadow-sm border border-gray-100">
+                    {rec.cardId && CARD_IMAGES[rec.cardId] ? (
+                      <img 
+                        src={CARD_IMAGES[rec.cardId]} 
+                        alt={rec.cardName} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className={`w-full h-full bg-gradient-to-r ${rec.color}`} />
+                    )}
+                  </div>
+                  
                   <h3 className="text-base font-semibold" style={{ color: '#2C3E50' }}>
                     {rec.cardName}
                   </h3>

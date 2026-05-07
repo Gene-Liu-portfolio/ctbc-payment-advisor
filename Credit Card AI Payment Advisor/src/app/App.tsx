@@ -9,6 +9,7 @@ import { fetchCards, recommendPayment } from './api';
 import type { CardMenuItem, SearchResult } from './api';
 
 interface Recommendation {
+  cardId: string;
   rank: number;
   cardName: string;
   channel: string;
@@ -51,6 +52,7 @@ function toRecommendation(r: SearchResult, rank: number, channel: string): Recom
   if (r.cashback_description) conditions.push(r.cashback_description);
 
   return {
+    cardId: r.card_id,
     rank,
     cardName: r.card_name,
     channel,
