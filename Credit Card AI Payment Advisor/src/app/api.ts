@@ -28,6 +28,7 @@ export interface SearchResult {
   is_fallback: boolean;
   merchant?: string;
   payment_method?: string;
+  reason?: string;
 }
 
 export interface SearchResponse {
@@ -51,6 +52,7 @@ export interface RecommendResponse {
     channel_id: string;
     best_options: SearchResult[];
   }[];
+  off_topic_message?: string;
   error: string | null;
 }
 

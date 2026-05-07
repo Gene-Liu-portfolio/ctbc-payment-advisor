@@ -114,9 +114,9 @@ def _get_session_id() -> str:
 
 # ── 動態工具發現 ──────────────────────────────────────────────────────────────
 
-def _mcp_schema_to_groq(tool: dict) -> dict:
+def _mcp_schema_to_anthropic(tool: dict) -> dict:
     """
-    將 MCP tool schema 轉換為 Groq function calling 格式。
+    將 MCP tool schema 轉換為 Anthropic Claude tool use 格式。
     自動移除 cards_owned 參數（由 Agent 注入，不讓 LLM 控制）。
     """
     input_schema = tool.get("inputSchema", {})
@@ -130,22 +130,19 @@ def _mcp_schema_to_groq(tool: dict) -> dict:
             required.remove(param)
 
     return {
-        "type": "function",
-        "function": {
-            "name": tool["name"],
-            "description": tool.get("description", ""),
-            "parameters": {
-                "type": "object",
-                "properties": properties,
-                "required": required,
-            },
+        "name": tool["name"],
+        "description": tool.get("description", ""),
+        "input_schema": {
+            "type": "object",
+            "properties": properties,
+            "required": required,
         },
     }
 
 
 def discover_tools() -> list[dict]:
     """
-    從 MCP Server 動態發現所有工具，轉換為 Groq Tool Schema。
+    從 MCP Server 動態發現所有工具，轉換為 Anthropic tool use 格式。
     結果會快取，同一 process 只呼叫一次。
     """
     global _discovered_tools
@@ -157,18 +154,18 @@ def discover_tools() -> list[dict]:
 
     # 排除輔助工具（reload_data 不需要暴露給 LLM）
     _EXCLUDE_TOOLS = {"reload_data"}
-    groq_tools = [
-        _mcp_schema_to_groq(t)
+    tools = [
+        _mcp_schema_to_anthropic(t)
         for t in mcp_tools
         if t["name"] not in _EXCLUDE_TOOLS
     ]
 
-    _discovered_tools = groq_tools
+    _discovered_tools = tools
     return _discovered_tools
 
 
 def get_tool_definitions() -> list[dict]:
-    """取得 Groq 格式的工具定義（動態發現，含快取）。"""
+    """取得 Anthropic 格式的工具定義（動態發現，含快取）。"""
     return discover_tools()
 
 
