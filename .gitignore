@@ -14,3 +14,7 @@ node_modules/
 ctbc_payment_advisor.egg-info/
 *.egg-info/
 nohup.out
+# Frontend Node
+node_modules/
+Credit Card AI Payment Advisor/dist/
+.DS_Store
