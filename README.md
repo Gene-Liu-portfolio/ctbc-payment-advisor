@@ -46,6 +46,50 @@
 | `fubon_b_lifestyle` | 富邦富利生活卡 |
 | `fubon_c_twm` | 台灣大哥大Open Possible聯名卡 |
 
+### 卡片 JSON 欄位說明
+
+每張卡片在 `data/processed/merged_cards.json` 中為一個 object，結構參考 `data/schemas/card_schema.json`（JSON Schema Draft-07）。
+
+**卡片層級欄位**
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `card_id` | string | 卡片唯一識別碼，格式 `{bank}_{name}`（例：`ctbc_c_linepay`） |
+| `card_name` | string | 卡片完整名稱 |
+| `card_status` | enum | `active` 現行 / `discontinued` 已停發 / `unknown` 待確認 |
+| `card_org` | enum \| null | 發卡組織：`VISA` / `Mastercard` / `JCB` / `AE` / `UnionPay` |
+| `annual_fee` | int \| null | 年費（NTD），`0` = 免年費 |
+| `annual_fee_waiver` | string \| null | 免年費條件說明 |
+| `card_url` | string \| null | 官網卡片介紹頁 URL |
+| `apply_url` | string \| null | 線上申辦頁 URL |
+| `tags` | string[] | 卡片標籤，用於快速搜尋（例：`["餐飲美食", "行動支付"]`） |
+| `notes` | string \| null | 備註說明 |
+| `data_source` | enum | 資料來源：`api` / `scraper` / `manual` / `manual_seed` |
+| `last_verified` | date \| null | 最後人工驗證日期（`YYYY-MM-DD`） |
+| `channels` | object[] | 各通路優惠設定（見下方） |
+| `deals` | object[] | （Optional）microsite 商家層級優惠，build-time 由 `microsite_deals.json` 注入 |
+
+**`channels[]` 內欄位**（單一通路的回饋設定）
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `channel_id` | enum | 通路代碼：`convenience_store` / `supermarket` / `ecommerce` / `food_delivery` / `transport` / `dining` / `travel` / `entertainment` / `gas_station` / `pharmacy` / `mobile_payment` / `general` / `overseas_general` / `wholesale` / `department_store` / `insurance` / `telecom` |
+| `channel_name` | string | 通路中文名稱 |
+| `merchants` | string[] | 適用商家清單，**空陣列 = 該類別全部適用** |
+| `cashback_type` | enum | `cash` 現金 / `points` 紅利點數 / `miles` 哩程 |
+| `cashback_rate` | float \| null | 回饋率，`0.05` = 5%（範圍 0–1） |
+| `cashback_description` | string \| null | 回饋說明原文（資料來源原始文字） |
+| `max_cashback_per_period` | int \| null | 每期回饋上限（NTD），`null` = 無上限 |
+| `min_spend` | int \| null | 最低消費門檻（NTD），`null` / `0` = 不限金額 |
+| `conditions` | string \| null | 完整條件說明（含限制、排除項） |
+| `valid_forever` | bool | `true` = 長期有效（非限時優惠） |
+| `valid_start` | date \| null | 優惠開始日（`YYYY-MM-DD`） |
+| `valid_end` | date \| null | 優惠截止日，`null` = 無截止 |
+| `expiring_soon` | bool | 30 天內到期自動標記 `true`（由 `data_cleaner` 計算） |
+| `data_source` | string | 該通路資料來源：`api` / `card_feature_direct` / `microsite` / `manual` |
+
+**多重 `channel_id` 的處理**：同一張卡可能有多筆相同 `channel_id`（例：`general` 出現在 `cash` 和 `points` 兩種回饋形式），代表不同 `cashback_type` 的並列回饋方案。
+
 ---
 
 ## Architecture

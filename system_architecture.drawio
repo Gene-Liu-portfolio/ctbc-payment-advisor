@@ -1,142 +1,226 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36" version="28.2.1">
-  <diagram id="-U26TtcJBHObrWLNib_k" name="第 1 页">
-    <mxGraphModel dx="2285" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+<mxfile host="app.diagrams.net" agent="Claude Code v7.2.1">
+  <diagram id="ctbc-arch-v721" name="CTBC v7.2 Architecture">
+    <mxGraphModel dx="2361" dy="1087" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1500" math="0" shadow="1">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="100" value="🗂️  資料收集層（離線執行）" style="swimlane;fontStyle=1;fontSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;startSize=40;rounded=1;" parent="1" vertex="1">
-          <mxGeometry x="30" y="20" width="1200" height="420" as="geometry" />
+        <mxCell id="title" parent="1" style="text;align=center;fontSize=24;fontStyle=1;fontColor=#0F172A;" value="CTBC × Fubon Credit Card Payment Advisor — System Architecture" vertex="1">
+          <mxGeometry height="36" width="1620" x="40" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="h1" value="資料來源" style="text;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;align=center;" parent="100" vertex="1">
-          <mxGeometry x="25" y="44" width="180" height="20" as="geometry" />
+        <mxCell id="subtitle" parent="1" style="text;align=center;fontSize=14;fontColor=#475569;" value="v7.2 / 2026-05-09　·　React Web Demo + Anthropic Claude + Dual Protocol (REST &amp; MCP)" vertex="1">
+          <mxGeometry height="24" width="1620" x="40" y="58" as="geometry" />
         </mxCell>
-        <mxCell id="h2" value="爬蟲腳本" style="text;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;align=center;" parent="100" vertex="1">
-          <mxGeometry x="265" y="44" width="180" height="20" as="geometry" />
+        <mxCell id="layer1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#BFDBFE;fontSize=15;fontStyle=1;fontColor=#1E40AF;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=1.5;" value="①  使用者介面層 / User Interface" vertex="1">
+          <mxGeometry height="200" width="1300" x="40" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="h3" value="資料檔案" style="text;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;align=center;" parent="100" vertex="1">
-          <mxGeometry x="510" y="44" width="180" height="20" as="geometry" />
+        <mxCell id="ui-react" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=2;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;React Web Demo&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;Vite 6 + React 18 + TypeScript&lt;br&gt;Tailwind 4 + Radix UI&lt;br&gt;dev server :5173 / Vite proxy /api → :8000&lt;/span&gt;" vertex="1">
+          <mxGeometry height="125" width="370" x="80" y="155" as="geometry" />
         </mxCell>
-        <mxCell id="101" value="中信官方 JSON API&#xa;creditcards.cardlist.json&#xa;offerdata.offerdatalist.json" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" parent="100" vertex="1">
-          <mxGeometry x="20" y="70" width="190" height="75" as="geometry" />
+        <mxCell id="ui-cli" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=2;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;CLI Agent&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;agent/payment_agent.py&lt;br&gt;互動式 REPL（自然語言對話）&lt;br&gt;Claude Sonnet 4.6 Tool Use&lt;/span&gt;" vertex="1">
+          <mxGeometry height="125" width="370" x="500" y="155" as="geometry" />
         </mxCell>
-        <mxCell id="105" value="ctbc_scraper.py&#xa;HTTP GET + JSON parse" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;" parent="100" vertex="1">
-          <mxGeometry x="260" y="70" width="190" height="75" as="geometry" />
+        <mxCell id="ui-gradio" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=2;shadow=1;dashed=1;dashPattern=4 4;opacity=85;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;Gradio Demo（legacy）&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;gradio_app.py（:7860）&lt;br&gt;Groq llama-3.3-70b（待遷移）&lt;br&gt;經 MCP HTTP 客戶端呼叫後端&lt;/span&gt;" vertex="1">
+          <mxGeometry height="125" width="370" x="920" y="155" as="geometry" />
         </mxCell>
-        <mxCell id="108" value="ctbc_cards.json&#xa;promotions.json" style="shape=cylinder3;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=center;whiteSpace=wrap;" parent="100" vertex="1">
-          <mxGeometry x="500" y="62" width="185" height="85" as="geometry" />
+        <mxCell id="layer2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F3FF;strokeColor=#DDD6FE;fontSize=15;fontStyle=1;fontColor=#5B21B6;align=left;verticalAlign=top;spacingLeft=20;spacingTop=12;strokeWidth=1.5;" value="②  Agent 層 / LLM Agent Orchestrator（CLI 專用）" vertex="1">
+          <mxGeometry height="200" width="760" x="300" y="340" as="geometry" />
         </mxCell>
-        <mxCell id="e101" style="edgeStyle=orthogonalEdgeStyle;" parent="100" source="101" target="105" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="ag-prompts" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=12;fontColor=#4C1D95;align=center;verticalAlign=middle;strokeWidth=2;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;prompts.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;依持卡清單動態生成&lt;br&gt;System Prompt&lt;br&gt;Off-topic 守則&lt;/span&gt;" vertex="1">
+          <mxGeometry height="130" width="220" x="320" y="395" as="geometry" />
         </mxCell>
-        <mxCell id="e105" style="edgeStyle=orthogonalEdgeStyle;" parent="100" source="105" target="108" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="ag-agent" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=12;fontColor=#4C1D95;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;payment_agent.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;Anthropic SDK ≥ 0.40&lt;br&gt;Claude Sonnet 4.6&lt;br&gt;Tool Use 主迴圈&lt;br&gt;MAX_ROUNDS = 5&lt;/span&gt;" vertex="1">
+          <mxGeometry height="130" width="230" x="570" y="395" as="geometry" />
         </mxCell>
-        <mxCell id="102" value="中信卡片特色頁&#xa;cc_introduction_index&#xa;（iframe HTML）" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" parent="100" vertex="1">
-          <mxGeometry x="20" y="170" width="190" height="75" as="geometry" />
+        <mxCell id="ag-bridge" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=12;fontColor=#4C1D95;align=center;verticalAlign=middle;strokeWidth=2;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;mcp_bridge.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;tools/list 動態發現&lt;br&gt;自動注入 cards_owned&lt;br&gt;SSE 強制 UTF-8 解析&lt;/span&gt;" vertex="1">
+          <mxGeometry height="130" width="220" x="820" y="395" as="geometry" />
         </mxCell>
-        <mxCell id="106" value="card_feature_scraper.py&#xa;HTTP GET + BeautifulSoup" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;" parent="100" vertex="1">
-          <mxGeometry x="260" y="170" width="190" height="75" as="geometry" />
+        <mxCell id="layer3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDFA;strokeColor=#0D9488;fontSize=15;fontStyle=1;fontColor=#0F766E;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=3;" value="③  MCP Server / 核心後端 — Starlette + uvicorn（port 8000）" vertex="1">
+          <mxGeometry height="320" width="1300" x="40" y="580" as="geometry" />
         </mxCell>
-        <mxCell id="109" value="card_features.json" style="shape=cylinder3;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=center;whiteSpace=wrap;" parent="100" vertex="1">
-          <mxGeometry x="500" y="162" width="185" height="85" as="geometry" />
+        <mxCell id="srv-ep-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontSize=13;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="&lt;b&gt;http_app.py — 對外端點&lt;/b&gt;" vertex="1">
+          <mxGeometry height="240" width="380" x="80" y="630" as="geometry" />
         </mxCell>
-        <mxCell id="e102" style="edgeStyle=orthogonalEdgeStyle;" parent="100" source="102" target="106" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="srv-rest" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=11;fontColor=#0F766E;align=left;spacingLeft=12;verticalAlign=top;spacingTop=10;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;REST API&lt;/b&gt; &lt;span style=&quot;font-size:10px;color:#0F766E;&quot;&gt;(React 用)&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#0F766E;&quot;&gt;GET /api/cards&lt;br&gt;POST /api/search&lt;br&gt;POST /api/recommend&lt;br&gt;POST /api/compare&lt;br&gt;POST /api/promotions&lt;br&gt;POST /api/card-details&lt;/span&gt;" vertex="1">
+          <mxGeometry height="180" width="220" x="100" y="670" as="geometry" />
         </mxCell>
-        <mxCell id="e106" style="edgeStyle=orthogonalEdgeStyle;" parent="100" source="106" target="109" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="srv-mcp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=11;fontColor=#0F766E;align=center;verticalAlign=top;spacingTop=10;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;/mcp&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10.5px;color:#0F766E;&quot;&gt;Streamable HTTP&lt;br&gt;JSON-RPC 2.0&lt;br&gt;tools/list&lt;br&gt;tools/call&lt;br&gt;SSE 串流回應&lt;/span&gt;" vertex="1">
+          <mxGeometry height="180" width="115" x="335" y="670" as="geometry" />
         </mxCell>
-        <mxCell id="103" value="中信微型網站&#xa;minisite HTML&#xa;（商家層級優惠）" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=center;" parent="100" vertex="1">
-          <mxGeometry x="20" y="270" width="190" height="75" as="geometry" />
+        <mxCell id="srv-tools-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontSize=13;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="&lt;b&gt;tools/ — MCP 工具集（6）&lt;/b&gt;" vertex="1">
+          <mxGeometry height="240" width="450" x="490" y="630" as="geometry" />
         </mxCell>
-        <mxCell id="107" value="microsite_scraper.py&#xa;HTTP GET + BeautifulSoup" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=center;" parent="100" vertex="1">
-          <mxGeometry x="260" y="270" width="190" height="75" as="geometry" />
+        <mxCell id="t1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;strokeWidth=1.5;" value="search_by_channel" vertex="1">
+          <mxGeometry height="44" width="200" x="510" y="678" as="geometry" />
         </mxCell>
-        <mxCell id="110" value="microsite_deals.json" style="shape=cylinder3;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=center;whiteSpace=wrap;" parent="100" vertex="1">
-          <mxGeometry x="500" y="262" width="185" height="85" as="geometry" />
+        <mxCell id="t2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;strokeWidth=1.5;" value="recommend_payment" vertex="1">
+          <mxGeometry height="44" width="200" x="720" y="678" as="geometry" />
         </mxCell>
-        <mxCell id="e103" style="edgeStyle=orthogonalEdgeStyle;" parent="100" source="103" target="107" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="t3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;strokeWidth=1.5;" value="compare_cards" vertex="1">
+          <mxGeometry height="44" width="200" x="510" y="732" as="geometry" />
         </mxCell>
-        <mxCell id="e107" style="edgeStyle=orthogonalEdgeStyle;" parent="100" source="107" target="110" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="t4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;strokeWidth=1.5;" value="get_promotions" vertex="1">
+          <mxGeometry height="44" width="200" x="720" y="732" as="geometry" />
         </mxCell>
-        <mxCell id="104" value="富邦官網（人工整理）" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=center;" parent="100" vertex="1">
-          <mxGeometry x="20" y="365" width="190" height="45" as="geometry" />
+        <mxCell id="t5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;strokeWidth=1.5;" value="get_card_details" vertex="1">
+          <mxGeometry height="44" width="200" x="510" y="786" as="geometry" />
         </mxCell>
-        <mxCell id="111" value="fubon_cards.json" style="shape=cylinder3;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=center;whiteSpace=wrap;" parent="100" vertex="1">
-          <mxGeometry x="500" y="360" width="185" height="50" as="geometry" />
+        <mxCell id="t6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;strokeWidth=1.5;" value="list_all_cards" vertex="1">
+          <mxGeometry height="44" width="200" x="720" y="786" as="geometry" />
         </mxCell>
-        <mxCell id="e104" style="edgeStyle=orthogonalEdgeStyle;dashed=1;" parent="100" source="104" target="111" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="srv-utils-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontSize=13;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="&lt;b&gt;utils/ — 共用模組&lt;/b&gt;" vertex="1">
+          <mxGeometry height="240" width="330" x="970" y="630" as="geometry" />
         </mxCell>
-        <mxCell id="115" value="&lt;b&gt;查詢優先序（合併使用）&lt;/b&gt;&#xa;&#xa;① microsite_deals.json&#xa;　 → 最精確，商家層級&#xa;&#xa;② card_features.json&#xa;　 → 官網驗證，通路層級&#xa;&#xa;③ ctbc_cards.json&#xa;　 → 基礎 API 資料" style="text;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10;rounded=1;" parent="100" vertex="1">
-          <mxGeometry x="740" y="65" width="440" height="310" as="geometry" />
+        <mxCell id="u1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=11;fontColor=#0F766E;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;data_loader.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;@lru_cache 載入 merged_cards.json&lt;br&gt;三層優先序合併查詢&lt;br&gt;（microsite → features → cards）&lt;/span&gt;" vertex="1">
+          <mxGeometry height="88" width="290" x="990" y="675" as="geometry" />
         </mxCell>
-        <mxCell id="e400" value="讀取 JSON 資料（三層合併）" style="edgeStyle=orthogonalEdgeStyle;fontSize=11;fontStyle=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="109" target="201" edge="1">
+        <mxCell id="u2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=11;fontColor=#0F766E;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;llm_parser.py&lt;/b&gt;　&lt;span style=&quot;font-size:10px;color:#0F766E;background:#CCFBF1;padding:1px 4px;border-radius:3px;&quot;&gt;NEW v7.2&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;Claude Haiku 4.5（low cost）&lt;br&gt;parse_scenario（Off-topic Guard）&lt;br&gt;generate_reasons（25–60 字理由）&lt;/span&gt;" vertex="1">
+          <mxGeometry height="92" width="290" x="990" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="layer4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#D1D5DB;fontSize=15;fontStyle=1;fontColor=#374151;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=1.5;" value="④  資料層 / Build-time JSON Files" vertex="1">
+          <mxGeometry height="160" width="1300" x="40" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;merged_cards.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;通路 / 卡片合併資料&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="220" x="200" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;promotions.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;限時活動 / 兌換&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="220" x="540" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;microsite_deals.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;商家層級優惠（最精確）&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="220" x="880" y="985" as="geometry" />
+        </mxCell>
+        <mxCell id="layer5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#BBF7D0;fontSize=15;fontStyle=1;fontColor=#166534;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=1.5;" value="⑤  Build Pipeline / 資料收集（離線執行）" vertex="1">
+          <mxGeometry height="200" width="1300" x="40" y="1140" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;ctbc_scraper.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;HTTP GET + JSON parse&lt;br&gt;→ ctbc_cards.json&lt;br&gt;→ promotions.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="220" x="80" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;card_feature_scraper.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;HTTP + BeautifulSoup&lt;br&gt;→ card_features.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="220" x="320" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;microsite_scraper.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;商家層級優惠擷取&lt;br&gt;→ microsite_deals.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="220" x="560" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBF7D0;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;merge.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;三層合併（聚合節點）&lt;br&gt;microsite → features → cards&lt;br&gt;→ merged_cards.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="220" x="800" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="b5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9CA3AF;fontSize=11;fontColor=#475569;align=center;verticalAlign=middle;strokeWidth=1.5;dashed=1;dashPattern=4 4;opacity=80;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;fubon_cards.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size: 11px; color: rgb(71, 85, 105);&quot;&gt;人工整理&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="220" x="1060" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="ext-anthropic" parent="1" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=13;fontColor=#78350F;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;Anthropic API&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#7C2D12;&quot;&gt;claude-sonnet-4-6&lt;br&gt;claude-haiku-4-5-20251001&lt;/span&gt;" vertex="1">
+          <mxGeometry height="140" width="260" x="1380" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="ext-ctbc" parent="1" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=13;fontColor=#78350F;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;CTBC 中信官網&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#7C2D12;&quot;&gt;JSON API + HTML 頁面&lt;br&gt;微型網站 minisite&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="260" x="1380" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="e-react-rest" edge="1" parent="1" source="ui-react" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;strokeColor=#2563EB;fontSize=12;fontStyle=1;fontColor=#1E40AF;exitX=0.5;exitY=1;entryX=0;entryY=0.5;jumpStyle=arc;" target="srv-rest" value="&lt;b&gt;REST /api/*&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;&quot;&gt;Vite proxy → :8000&lt;/span&gt;">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="593" y="460" />
-              <mxPoint x="260" y="460" />
-              <mxPoint x="260" y="530" />
+              <mxPoint x="265" y="480" />
+              <mxPoint x="60" y="480" />
+              <mxPoint x="60" y="760" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="200" value="☁️  MCP Server（部署於 Render — Streamable HTTP）" style="swimlane;fontStyle=1;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;startSize=40;rounded=1;" parent="1" vertex="1">
-          <mxGeometry x="30" y="490" width="1200" height="210" as="geometry" />
-        </mxCell>
-        <mxCell id="201" value="data_loader.py&#xa;三層優先序合併&#xa;microsite → features → cards" style="rounded=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;align=center;" parent="200" vertex="1">
-          <mxGeometry x="20" y="60" width="210" height="110" as="geometry" />
-        </mxCell>
-        <mxCell id="202" value="search_by_channel" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" parent="200" vertex="1">
-          <mxGeometry x="290" y="58" width="170" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="203" value="recommend_payment" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" parent="200" vertex="1">
-          <mxGeometry x="480" y="58" width="170" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="204" value="compare_cards" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" parent="200" vertex="1">
-          <mxGeometry x="670" y="58" width="170" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="205" value="get_promotions" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" parent="200" vertex="1">
-          <mxGeometry x="290" y="128" width="170" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="206" value="get_card_details" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" parent="200" vertex="1">
-          <mxGeometry x="480" y="128" width="170" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="207" value="list_all_cards" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=center;" parent="200" vertex="1">
-          <mxGeometry x="670" y="128" width="170" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="e201" value="提供資料" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" parent="200" source="201" target="202" edge="1">
+        <mxCell id="e-cli-agent" edge="1" parent="1" source="ui-cli" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#7C3AED;fontSize=12;fontStyle=1;fontColor=#5B21B6;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="ag-agent" value="自然語言輸入">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e204" style="edgeStyle=orthogonalEdgeStyle;" parent="200" source="201" target="205" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="300" value="💻  前端 / 使用者介面" style="swimlane;fontStyle=1;fontSize=14;fillColor=#e1d5e7;strokeColor=#9673a6;startSize=40;rounded=1;" parent="1" vertex="1">
-          <mxGeometry x="30" y="740" width="1200" height="240" as="geometry" />
-        </mxCell>
-        <mxCell id="304" value="mcp_bridge.py&#xa;自動注入 cards_owned&#xa;SSE 解析（強制 UTF-8）" style="rounded=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;align=center;" parent="300" vertex="1">
-          <mxGeometry x="430" y="85" width="220" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="302" value="CLI Agent&#xa;payment_agent.py&#xa;多輪自然語言對話" style="rounded=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;align=center;" parent="300" vertex="1">
-          <mxGeometry x="820" y="55" width="210" height="75" as="geometry" />
-        </mxCell>
-        <mxCell id="303" value="Groq LLM&#xa;llama-3.3-70b&#xa;Function Calling 決定 Tool" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=center;" parent="300" vertex="1">
-          <mxGeometry x="820" y="150" width="210" height="75" as="geometry" />
-        </mxCell>
-        <mxCell id="e301" style="edgeStyle=orthogonalEdgeStyle;" parent="300" source="302" target="303" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e302" value="呼叫哪個 Tool" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" parent="300" source="303" target="304" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e405" value="HTTP POST /mcp" style="edgeStyle=orthogonalEdgeStyle;fontSize=11;fontStyle=1;strokeWidth=2;strokeColor=#9673a6;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.42;entryY=1;entryDx=0;entryDy=0;" parent="1" source="304" target="200" edge="1">
+        <mxCell id="e-gradio-mcp" edge="1" parent="1" source="ui-gradio" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2.5;strokeColor=#0D9488;fontSize=12;fontStyle=1;fontColor=#0F766E;exitX=0.5;exitY=1;entryX=0.3;entryY=0;dashed=1;dashPattern=6 4;opacity=85;jumpStyle=arc;" target="srv-mcp" value="&lt;b&gt;MCP /mcp&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;&quot;&gt;legacy（Groq SDK）&lt;/span&gt;">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="540" y="718" />
-              <mxPoint x="540" y="700" />
+              <mxPoint x="1105" y="560" />
+              <mxPoint x="370" y="560" />
             </Array>
           </mxGeometry>
+        </mxCell>
+        <mxCell id="e-prompts-agent" edge="1" parent="1" source="ag-prompts" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#7C3AED;fontSize=11;fontColor=#5B21B6;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="ag-agent" value="System Prompt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-agent-bridge" edge="1" parent="1" source="ag-agent" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#7C3AED;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="ag-bridge" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-bridge-mcp" edge="1" parent="1" source="ag-bridge" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;strokeColor=#0D9488;fontSize=12;fontStyle=1;fontColor=#0F766E;exitX=0.5;exitY=1;entryX=0.7;entryY=0;jumpStyle=arc;" target="srv-mcp" value="&lt;b&gt;MCP /mcp&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;&quot;&gt;JSON-RPC 2.0 + SSE&lt;/span&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930" y="600" />
+              <mxPoint x="416" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-agent-anthropic" edge="1" parent="1" source="ag-bridge" style="endArrow=classic;html=1;rounded=0;edgeStyle=none;strokeWidth=2.5;strokeColor=#D97706;fontSize=12;fontStyle=1;fontColor=#B45309;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;dashPattern=6 4;startArrow=classic;startFill=1;" target="ext-anthropic" value="&lt;b&gt;Anthropic Tool Use&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;&quot;&gt;Claude Sonnet 4.6&lt;/span&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1380" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-llm-anthropic" edge="1" parent="1" source="u2" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2.5;strokeColor=#D97706;fontSize=12;fontStyle=1;fontColor=#B45309;exitX=1;exitY=0.5;entryX=0.5;entryY=1;dashed=1;dashPattern=6 4;startArrow=classic;startFill=1;" target="ext-anthropic" value="&lt;b&gt;LLM 解析 + 理由生成&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;&quot;&gt;Claude Haiku 4.5&lt;/span&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1510" y="821" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-utils-data" edge="1" parent="1" source="u1" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2.5;strokeColor=#374151;fontSize=12;fontStyle=1;fontColor=#374151;exitX=0;exitY=0.5;entryX=0.5;entryY=0;jumpStyle=arc;" target="d2" value="&lt;b&gt;讀取 JSON&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;&quot;&gt;@lru_cache&lt;/span&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="955" y="719" />
+              <mxPoint x="955" y="915" />
+              <mxPoint x="650" y="915" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-build-data" edge="1" parent="1" source="b4" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2.5;strokeColor=#16A34A;fontSize=12;fontStyle=1;fontColor=#166534;exitX=0.5;exitY=0;entryX=0.5;entryY=1;dashed=1;dashPattern=6 4;jumpStyle=arc;" target="d1" value="&lt;b&gt;build-time 產出&lt;/b&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="1120" />
+              <mxPoint x="310" y="1120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-ctbc-build" edge="1" parent="1" source="ext-ctbc" style="endArrow=classic;html=1;rounded=0;edgeStyle=none;strokeWidth=2.5;strokeColor=#D97706;fontSize=12;fontStyle=1;fontColor=#B45309;exitX=0;exitY=0.5;entryX=1;entryY=0.55;dashed=1;dashPattern=6 4;" target="layer5" value="&lt;b&gt;HTTP scrape&lt;/b&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;" value="" vertex="1">
+          <mxGeometry height="100" width="1600" x="40" y="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" parent="1" style="text;align=left;fontSize=14;fontStyle=1;fontColor=#0F172A;" value="圖例 / Legend" vertex="1">
+          <mxGeometry height="24" width="200" x="60" y="1390" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1-line" edge="1" parent="1" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#0F172A;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="60" y="1438" as="sourcePoint" />
+            <mxPoint x="140" y="1438" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg1-text" parent="1" style="text;fontSize=12;fontColor=#374151;align=left;verticalAlign=middle;" value="實線：執行期資料流（runtime）" vertex="1">
+          <mxGeometry height="24" width="240" x="150" y="1426" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2-line" edge="1" parent="1" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#0F172A;dashed=1;dashPattern=6 4;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="420" y="1438" as="sourcePoint" />
+            <mxPoint x="500" y="1438" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg2-text" parent="1" style="text;fontSize=12;fontColor=#374151;align=left;verticalAlign=middle;" value="虛線：建置期 / 外部 API 呼叫" vertex="1">
+          <mxGeometry height="24" width="260" x="510" y="1426" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3-cloud" parent="1" style="shape=cloud;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="42" width="60" x="780" y="1410" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3-text" parent="1" style="text;fontSize=12;fontColor=#374151;align=left;verticalAlign=middle;" value="雲狀：外部第三方服務" vertex="1">
+          <mxGeometry height="24" width="200" x="855" y="1426" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4-core" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=3;" value="" vertex="1">
+          <mxGeometry height="42" width="60" x="1080" y="1410" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4-text" parent="1" style="text;fontSize=12;fontColor=#374151;align=left;verticalAlign=middle;" value="核心模組（粗框 = 系統中樞）" vertex="1">
+          <mxGeometry height="24" width="240" x="1155" y="1426" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5-cyl" parent="1" style="shape=cylinder3;fillColor=#F3F4F6;strokeColor=#4B5563;strokeWidth=1.5;boundedLbl=1;backgroundOutline=1;size=10;" value="" vertex="1">
+          <mxGeometry height="44" width="42" x="1410" y="1408" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5-text" parent="1" style="text;fontSize=12;fontColor=#374151;align=left;verticalAlign=middle;" value="JSON 資料檔" vertex="1">
+          <mxGeometry height="24" width="170" x="1465" y="1426" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
