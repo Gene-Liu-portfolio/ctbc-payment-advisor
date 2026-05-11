@@ -95,6 +95,11 @@
 
 ## Architecture
 
+![System Architecture](./system_architecture_professional.png)
+
+<details>
+<summary>📐 ASCII diagram（純文字版）</summary>
+
 ```
   Frontend (Browser)              Backend (Unified ASGI)               Anthropic Cloud
 ┌─────────────────────┐      ┌────────────────────────────┐      ┌──────────────────┐
@@ -126,6 +131,8 @@
                                   │  channels.json    │
                                   └───────────────────┘
 ```
+
+</details>
 
 **Key Design Decisions:**
 
@@ -173,7 +180,8 @@ python -m mcp_server.http_app
 端點：
 - `GET  /api/cards` — 卡片清單
 - `POST /api/chat` — Claude SSE 串流（透過 MCP Connector 呼叫工具）
-- `POST /api/{search,recommend,compare,promotions,card-details}` — REST deterministic 查詢
+- `POST /api/{search,compare,promotions,card-details}` — REST deterministic 查詢
+- `POST /api/recommend` — 情境推薦（Claude Haiku 輔助解析情境與產生理由；失敗時 regex fallback）
 - `*    /mcp` — MCP Streamable HTTP（給 Claude API 用，需公網 HTTPS 才有 effect）
 
 **2. 啟動前端**（Vite dev server，port 5173，自動 proxy `/api/*` 與 `/mcp` 到 8000）
@@ -325,7 +333,7 @@ ctbc-payment-advisor/
 
 | Component | Technology |
 |-----------|-----------|
-| LLM | Anthropic Claude API（Sonnet 4.6，預設） |
+| LLM | Anthropic Claude API（Sonnet 4.6 用於 chat；Haiku 4.5 用於情境解析與推薦理由） |
 | LLM ↔ Tools | **MCP Connector**（`anthropic.beta.messages.stream(mcp_servers=...)`，beta `mcp-client-2025-04-04`） |
 | MCP Framework | FastMCP（Python `mcp` SDK 1.27+） |
 | Transport | Streamable HTTP（SSE） |

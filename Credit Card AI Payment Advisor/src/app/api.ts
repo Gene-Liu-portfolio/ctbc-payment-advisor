@@ -2,7 +2,8 @@
  * api.ts
  * ------
  * 前端 API client：
- * - REST：列卡、deterministic 推薦/比較/優惠/單卡詳情（不走 LLM）
+ * - REST：列卡、推薦/比較/優惠/單卡詳情
+ *   （/api/recommend 會用 Haiku 輔助解析情境與產生理由；失敗時後端 fallback 到 regex）
  * - SSE Chat：與 Claude 多輪對話，Claude 透過 MCP Connector 自動呼叫 /mcp 工具
  *
  * 所有路徑走 /api/*（Vite proxy 轉發到 http://127.0.0.1:8000）。

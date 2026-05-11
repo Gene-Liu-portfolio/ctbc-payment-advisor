@@ -15,7 +15,7 @@ http_app.py
   - GET  /health          → 健康檢查
   - GET  /api/cards       → 卡片清單
   - POST /api/search      → 通路最優卡查詢
-  - POST /api/recommend   → 情境推薦（deterministic，不走 LLM）
+  - POST /api/recommend   → 情境推薦（Claude Haiku 解析情境 / 產生理由；失敗時 regex fallback）
   - POST /api/compare     → 多卡比較
   - POST /api/promotions  → 優惠活動
   - POST /api/card-details → 單卡詳情
@@ -99,7 +99,7 @@ async def api_search(request: Request):
 
 
 async def api_recommend(request: Request):
-    """POST /api/recommend — 情境推薦（deterministic，無 LLM）。"""
+    """POST /api/recommend — 情境推薦（Haiku 輔助解析；失敗時 regex fallback）。"""
     try:
         body = await request.json()
     except Exception:

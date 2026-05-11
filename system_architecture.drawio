@@ -1,167 +1,205 @@
-<mxfile host="app.diagrams.net" agent="Claude Code v8.0">
+<mxfile host="app.diagrams.net" agent="Claude Code v8.1">
   <diagram id="ctbc-arch-v8" name="CTBC v8.0 Architecture">
-    <mxGraphModel dx="2361" dy="1087" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1500" math="0" shadow="1">
+    <mxGraphModel dx="2361" dy="1087" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1300" math="0" shadow="1">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
+        <!-- Title & subtitle -->
         <mxCell id="title" parent="1" style="text;align=center;fontSize=24;fontStyle=1;fontColor=#0F172A;" value="CTBC × Fubon Credit Card Payment Advisor — System Architecture" vertex="1">
-          <mxGeometry height="36" width="1720" x="40" y="20" as="geometry" />
+          <mxGeometry height="32" width="1420" x="40" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="subtitle" parent="1" style="text;align=center;fontSize=14;fontColor=#475569;" value="v8.0 / 2026-05-11　·　React-only Frontend + Anthropic MCP Connector (true MCP protocol, no function-calling wrapper)" vertex="1">
-          <mxGeometry height="24" width="1720" x="40" y="58" as="geometry" />
-        </mxCell>
-
-        <!-- Layer 1: Frontend -->
-        <mxCell id="layer1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#BFDBFE;fontSize=15;fontStyle=1;fontColor=#1E40AF;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=1.5;" value="①  Frontend / React Web Demo（唯一 UI）" vertex="1">
-          <mxGeometry height="240" width="1720" x="40" y="100" as="geometry" />
-        </mxCell>
-        <mxCell id="ui-react" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=2;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;React Web Demo&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;Vite 6 + React 18 + TypeScript&lt;br&gt;Tailwind 4 + Radix UI&lt;br&gt;dev server :5173 / proxy /api → :8000&lt;/span&gt;" vertex="1">
-          <mxGeometry height="160" width="320" x="80" y="160" as="geometry" />
-        </mxCell>
-        <mxCell id="ui-card" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontSize=12;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b&gt;CardSelectionPage&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;勾選 13 張卡 → Start&lt;/span&gt;" vertex="1">
-          <mxGeometry height="80" width="280" x="430" y="160" as="geometry" />
-        </mxCell>
-        <mxCell id="ui-chat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontSize=12;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b&gt;ChatInput + ChatMessage&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;多輪對話 / SSE 串流&lt;br&gt;顯示 tool_use chips&lt;/span&gt;" vertex="1">
-          <mxGeometry height="80" width="280" x="430" y="250" as="geometry" />
-        </mxCell>
-        <mxCell id="ui-api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontSize=12;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b&gt;api.ts&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;fetchCards() — REST&lt;br&gt;streamChat() — SSE parser&lt;/span&gt;" vertex="1">
-          <mxGeometry height="80" width="260" x="740" y="160" as="geometry" />
-        </mxCell>
-        <mxCell id="ui-features" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=11;fontColor=#78350F;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;前端涵蓋功能（全經 chat / MCP 工具）&lt;/b&gt;&lt;br&gt;• 情境推薦（recommend_payment）&lt;br&gt;• 通路最優卡（search_by_channel）&lt;br&gt;• 多卡比較（compare_cards）&lt;br&gt;• 優惠查詢 + 到期提醒（get_promotions）&lt;br&gt;• 單卡詳情（get_card_details）&lt;br&gt;• 多輪對話記憶 + 海外消費自動判斷" vertex="1">
-          <mxGeometry height="160" width="370" x="1020" y="160" as="geometry" />
-        </mxCell>
-        <mxCell id="ui-removed" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#DC2626;fontSize=11;fontColor=#7F1D1D;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;v8.0 已刪除&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;&quot;&gt;Gradio Demo (gradio_app.py)&lt;br&gt;CLI Agent (main.py)&lt;br&gt;agent/payment_agent.py&lt;br&gt;agent/mcp_bridge.py&lt;br&gt;agent/prompts.py&lt;/span&gt;" vertex="1">
-          <mxGeometry height="140" width="270" x="1430" y="170" as="geometry" />
+        <mxCell id="subtitle" parent="1" style="text;align=center;fontSize=13;fontColor=#475569;" value="v8.0 / 2026-05-11　·　React-only Frontend + Anthropic MCP Connector （真正的 MCP 協定，無 function-calling wrapper）" vertex="1">
+          <mxGeometry height="22" width="1420" x="40" y="56" as="geometry" />
         </mxCell>
 
-        <!-- Layer 2: Unified Backend -->
-        <mxCell id="layer2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDFA;strokeColor=#0D9488;fontSize=15;fontStyle=1;fontColor=#0F766E;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=3;" value="②  Unified Backend — Starlette + uvicorn（mcp_server/http_app.py，port 8000）" vertex="1">
-          <mxGeometry height="320" width="1720" x="40" y="380" as="geometry" />
+        <!-- ===================== Layer 1: Frontend ===================== -->
+        <mxCell id="layer1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#93C5FD;fontSize=16;fontStyle=1;fontColor=#1E40AF;align=left;verticalAlign=top;spacingLeft=18;spacingTop=10;strokeWidth=1.5;" value="①  Frontend — React Web Demo （唯一 UI）" vertex="1">
+          <mxGeometry height="190" width="1420" x="40" y="92" as="geometry" />
         </mxCell>
 
-        <mxCell id="be-rest" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=12;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=10;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;REST endpoints&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;GET /api/cards&lt;br&gt;POST /api/search&lt;br&gt;POST /api/recommend&lt;br&gt;POST /api/compare&lt;br&gt;POST /api/promotions&lt;br&gt;POST /api/card-details&lt;/span&gt;" vertex="1">
-          <mxGeometry height="200" width="240" x="80" y="440" as="geometry" />
+        <mxCell id="ui-react" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=2;shadow=1;" value="&lt;b style=&quot;font-size:16px;&quot;&gt;React Web Demo&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:13px;color:#334155;&quot;&gt;Vite 6 · React 18 · TS&lt;br&gt;Tailwind 4 · Radix UI&lt;/span&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;dev :5173　|　proxy /api → :8000&lt;/span&gt;" vertex="1">
+          <mxGeometry height="145" width="240" x="68" y="128" as="geometry" />
         </mxCell>
 
-        <mxCell id="be-chat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontSize=12;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;POST /api/chat&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#0F766E;&quot;&gt;mcp_server/chat.py&lt;br&gt;&lt;br&gt;Anthropic SDK&lt;br&gt;beta.messages.stream(&lt;br&gt;&amp;nbsp;&amp;nbsp;mcp_servers=[{url}],&lt;br&gt;&amp;nbsp;&amp;nbsp;betas=[&quot;mcp-client-…&quot;]&lt;br&gt;)&lt;br&gt;&lt;br&gt;轉 SSE：text /&lt;br&gt;tool_use / tool_result&lt;/span&gt;" vertex="1">
-          <mxGeometry height="240" width="260" x="340" y="420" as="geometry" />
+        <mxCell id="ui-card" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;CardSelectionPage&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;勾選 13 張卡 → 進入對話&lt;/span&gt;" vertex="1">
+          <mxGeometry height="65" width="240" x="328" y="128" as="geometry" />
+        </mxCell>
+        <mxCell id="ui-chat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;ChatInput + ChatMessage&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;多輪對話 / SSE 串流渲染&lt;br&gt;顯示 tool_use chips&lt;/span&gt;" vertex="1">
+          <mxGeometry height="70" width="240" x="328" y="203" as="geometry" />
         </mxCell>
 
-        <mxCell id="be-mcp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=12;fontColor=#0F766E;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;Mount /mcp&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#0F766E;&quot;&gt;FastMCP&lt;br&gt;streamable_http_app()&lt;br&gt;&lt;br&gt;JSON-RPC 2.0&lt;br&gt;tools/list&lt;br&gt;tools/call&lt;br&gt;SSE 串流&lt;/span&gt;" vertex="1">
-          <mxGeometry height="200" width="220" x="620" y="440" as="geometry" />
+        <mxCell id="ui-api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontSize=13;fontColor=#1E3A8A;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;api.ts&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;fetchCards()&lt;br&gt;＝ REST 呼叫&lt;br&gt;&lt;br&gt;streamChat()&lt;br&gt;＝ SSE parser&lt;/span&gt;" vertex="1">
+          <mxGeometry height="145" width="220" x="588" y="128" as="geometry" />
         </mxCell>
 
-        <mxCell id="be-tools-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontSize=13;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="&lt;b&gt;tools/ — MCP 工具集（7）&lt;/b&gt;" vertex="1">
-          <mxGeometry height="220" width="340" x="860" y="430" as="geometry" />
-        </mxCell>
-        <mxCell id="t1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=11;fontColor=#713F12;align=center;strokeWidth=1.5;" value="search_by_channel" vertex="1">
-          <mxGeometry height="26" width="150" x="870" y="465" as="geometry" />
-        </mxCell>
-        <mxCell id="t2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=11;fontColor=#713F12;align=center;strokeWidth=1.5;" value="recommend_payment" vertex="1">
-          <mxGeometry height="26" width="150" x="1030" y="465" as="geometry" />
-        </mxCell>
-        <mxCell id="t3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=11;fontColor=#713F12;align=center;strokeWidth=1.5;" value="compare_cards" vertex="1">
-          <mxGeometry height="26" width="150" x="870" y="500" as="geometry" />
-        </mxCell>
-        <mxCell id="t4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=11;fontColor=#713F12;align=center;strokeWidth=1.5;" value="get_promotions" vertex="1">
-          <mxGeometry height="26" width="150" x="1030" y="500" as="geometry" />
-        </mxCell>
-        <mxCell id="t5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=11;fontColor=#713F12;align=center;strokeWidth=1.5;" value="get_card_details" vertex="1">
-          <mxGeometry height="26" width="150" x="870" y="535" as="geometry" />
-        </mxCell>
-        <mxCell id="t6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=11;fontColor=#713F12;align=center;strokeWidth=1.5;" value="list_all_cards" vertex="1">
-          <mxGeometry height="26" width="150" x="1030" y="535" as="geometry" />
-        </mxCell>
-        <mxCell id="t7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=11;fontColor=#713F12;align=center;strokeWidth=1.5;" value="reload_data" vertex="1">
-          <mxGeometry height="26" width="150" x="870" y="570" as="geometry" />
-        </mxCell>
-        <mxCell id="t-resource" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=10;fontStyle=2;fontColor=#713F12;align=center;strokeWidth=1.5;" value="+ 2 resources&lt;br&gt;card:// channels://" vertex="1">
-          <mxGeometry height="40" width="150" x="1030" y="563" as="geometry" />
+        <mxCell id="ui-features" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=12;fontColor=#78350F;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;前端涵蓋功能（全由 chat 路徑 + MCP 工具完成）&lt;/b&gt;&lt;br&gt;&lt;br&gt;•  情境推薦／通路最優卡&lt;br&gt;•  多卡比較／優惠與到期提醒&lt;br&gt;•  單卡詳情查詢&lt;br&gt;•  多輪對話記憶 + 海外消費自動判斷" vertex="1">
+          <mxGeometry height="145" width="330" x="828" y="128" as="geometry" />
         </mxCell>
 
-        <mxCell id="be-loader" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=11;fontColor=#0F766E;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;data_loader.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;@lru_cache 載入&lt;br&gt;merged_cards.json&lt;br&gt;promotions.json&lt;br&gt;channels.json&lt;/span&gt;" vertex="1">
-          <mxGeometry height="120" width="240" x="1220" y="440" as="geometry" />
+        <mxCell id="ui-removed" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#DC2626;fontSize=12;fontColor=#7F1D1D;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;v8.0 已刪除&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;&quot;&gt;Gradio Demo&lt;br&gt;CLI Agent (main.py)&lt;br&gt;agent/payment_agent&lt;br&gt;agent/mcp_bridge&lt;br&gt;agent/prompts&lt;/span&gt;" vertex="1">
+          <mxGeometry height="145" width="282" x="1178" y="128" as="geometry" />
         </mxCell>
 
-        <mxCell id="be-system" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=11;fontColor=#78350F;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;System Prompt 約束&lt;/b&gt;&lt;br&gt;cards_owned 固定為使用者勾選清單&lt;br&gt;LLM 不得加入額外卡片&lt;br&gt;off-topic 不得呼叫工具&lt;br&gt;conditions / is_fallback 必須轉述" vertex="1">
-          <mxGeometry height="100" width="270" x="1480" y="440" as="geometry" />
+        <!-- ===================== Layer 2: Unified Backend ===================== -->
+        <mxCell id="layer2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDFA;strokeColor=#0D9488;fontSize=16;fontStyle=1;fontColor=#0F766E;align=left;verticalAlign=top;spacingLeft=18;spacingTop=10;strokeWidth=2.5;" value="②  Unified Backend — Starlette + uvicorn （mcp_server/http_app.py · port 8000）" vertex="1">
+          <mxGeometry height="320" width="1420" x="40" y="312" as="geometry" />
         </mxCell>
 
-        <!-- Layer 3: Anthropic Cloud -->
-        <mxCell id="layer3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7ED;strokeColor=#FB923C;fontSize=15;fontStyle=1;fontColor=#9A3412;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=1.5;" value="③  Anthropic Cloud — Claude API + MCP Connector" vertex="1">
-          <mxGeometry height="180" width="1720" x="40" y="730" as="geometry" />
-        </mxCell>
-        <mxCell id="cl-claude" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#EA580C;fontSize=13;fontColor=#9A3412;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;Claude API&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#7C2D12;&quot;&gt;claude-sonnet-4-6&lt;br&gt;Tool Use via MCP&lt;br&gt;Streaming responses&lt;/span&gt;" vertex="1">
-          <mxGeometry height="130" width="320" x="80" y="780" as="geometry" />
-        </mxCell>
-        <mxCell id="cl-connector" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FED7AA;strokeColor=#EA580C;fontSize=13;fontColor=#9A3412;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;MCP Connector&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#7C2D12;&quot;&gt;mcp_servers param&lt;br&gt;beta: mcp-client-2025-04-04&lt;br&gt;auto tools/list + tools/call&lt;/span&gt;" vertex="1">
-          <mxGeometry height="130" width="320" x="440" y="780" as="geometry" />
-        </mxCell>
-        <mxCell id="cl-flow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FB923C;fontSize=11;fontColor=#7C2D12;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;Chat flow（每輪對話）&lt;/b&gt;&lt;br&gt;1. /api/chat 把 message+history+cards_owned 送入 Claude&lt;br&gt;2. Claude 判斷需要呼叫工具 → MCP Connector 連 /mcp&lt;br&gt;3. FastMCP 執行對應 tool → 回傳 JSON&lt;br&gt;4. Claude 整合結果產生回覆 → SSE 串流回前端&lt;br&gt;5. 前端即時顯示 text + tool_use chips" vertex="1">
-          <mxGeometry height="130" width="840" x="800" y="780" as="geometry" />
+        <mxCell id="be-rest" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=12;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=12;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;REST endpoints&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;line-height:1.5;&quot;&gt;GET&amp;nbsp;&amp;nbsp;/api/cards&lt;br&gt;POST /api/search&lt;br&gt;POST /api/recommend&lt;br&gt;POST /api/compare&lt;br&gt;POST /api/promotions&lt;br&gt;POST /api/card-details&lt;/span&gt;" vertex="1">
+          <mxGeometry height="240" width="210" x="68" y="358" as="geometry" />
         </mxCell>
 
-        <!-- Layer 4: Data + Scraper -->
-        <mxCell id="layer4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#9CA3AF;fontSize=15;fontStyle=1;fontColor=#374151;align=left;verticalAlign=top;spacingLeft=22;spacingTop=12;strokeWidth=1.5;" value="④  Data Layer + Scraper（離線執行）" vertex="1">
-          <mxGeometry height="460" width="1720" x="40" y="940" as="geometry" />
+        <mxCell id="be-chat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontSize=12;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=12;strokeWidth=3;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;POST /api/chat&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#0F766E;&quot;&gt;mcp_server/chat.py&lt;/span&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#134E4A;line-height:1.6;&quot;&gt;Anthropic SDK&lt;br&gt;&lt;b&gt;beta.messages.stream&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;mcp_servers=[{url}]&lt;br&gt;&amp;nbsp;&amp;nbsp;beta=mcp-client-…&lt;br&gt;&lt;br&gt;轉 SSE：text /&lt;br&gt;tool_use / tool_result&lt;/span&gt;" vertex="1">
+          <mxGeometry height="240" width="250" x="296" y="358" as="geometry" />
         </mxCell>
 
-        <mxCell id="d-merged" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;merged_cards.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;★ Runtime 唯一卡片資料源&lt;br&gt;通路 + 卡片合併（13 張）&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="280" x="80" y="990" as="geometry" />
-        </mxCell>
-        <mxCell id="d-promos" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;promotions.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;限時活動 / 兌換（24 筆）&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="280" x="80" y="1110" as="geometry" />
-        </mxCell>
-        <mxCell id="d-channels" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=15;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;channels.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;通路分類對照表（17 種）&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="280" x="80" y="1230" as="geometry" />
+        <mxCell id="be-mcp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=12;fontColor=#0F766E;align=center;verticalAlign=top;spacingTop=12;strokeWidth=2.5;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;Mount  /mcp&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#0F766E;&quot;&gt;FastMCP&lt;/span&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;line-height:1.6;&quot;&gt;streamable_http_app()&lt;br&gt;&lt;br&gt;JSON-RPC 2.0&lt;br&gt;tools/list&lt;br&gt;tools/call&lt;br&gt;SSE 串流&lt;/span&gt;" vertex="1">
+          <mxGeometry height="240" width="210" x="564" y="358" as="geometry" />
         </mxCell>
 
-        <mxCell id="scraper-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#16A34A;fontSize=12;fontColor=#14532D;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="&lt;b&gt;scraper/ — Build-time pipeline&lt;/b&gt;" vertex="1">
-          <mxGeometry height="380" width="1340" x="400" y="990" as="geometry" />
-        </mxCell>
-        <mxCell id="sc-ctbc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;ctbc_scraper.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;HTTP GET + JSON parse&lt;br&gt;→ ctbc_cards.json&lt;br&gt;→ promotions.json&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="240" x="430" y="1030" as="geometry" />
-        </mxCell>
-        <mxCell id="sc-feat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;card_feature_scraper.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;HTTP + BeautifulSoup&lt;br&gt;→ card_features.json&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="240" x="700" y="1030" as="geometry" />
-        </mxCell>
-        <mxCell id="sc-micro" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;microsite_scraper.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;商家層級優惠擷取&lt;br&gt;→ microsite_deals.json&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="240" x="970" y="1030" as="geometry" />
-        </mxCell>
-        <mxCell id="sc-fubon" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9CA3AF;fontSize=11;fontColor=#475569;align=center;verticalAlign=middle;strokeWidth=1.5;dashed=1;dashPattern=4 4;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;fubon_cards.json&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;&quot;&gt;人工整理（7 張）&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="240" x="1240" y="1030" as="geometry" />
-        </mxCell>
-        <mxCell id="sc-merge" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBF7D0;strokeColor=#16A34A;fontSize=12;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;merge.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;三層合併（聚合節點）&lt;br&gt;microsite → features → cards&lt;br&gt;→ merged_cards.json (v2.0)&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="320" x="900" y="1180" as="geometry" />
-        </mxCell>
-        <mxCell id="sc-tests" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#16A34A;fontSize=11;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:12px;&quot;&gt;tests/test_mcp_tools.py&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:11px;color:#475569;&quot;&gt;deterministic 單元測試&lt;br&gt;不需 LLM API&lt;/span&gt;" vertex="1">
-          <mxGeometry height="100" width="240" x="1240" y="1180" as="geometry" />
+        <mxCell id="be-tools-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontSize=14;fontStyle=1;fontColor=#134E4A;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="tools/ — MCP 工具集（7）" vertex="1">
+          <mxGeometry height="240" width="400" x="792" y="358" as="geometry" />
         </mxCell>
 
-        <!-- Edges -->
-        <mxCell id="e-react-rest" edge="1" parent="1" source="ui-react" target="be-rest" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#0D9488;fontSize=11;fontStyle=1;fontColor=#0F766E;exitX=0.4;exitY=1;entryX=0.4;entryY=0;" value="REST /api/*">
+        <mxCell id="t1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;" value="search_by_channel" vertex="1">
+          <mxGeometry height="32" width="175" x="802" y="402" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;" value="recommend_payment" vertex="1">
+          <mxGeometry height="32" width="175" x="1007" y="402" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;" value="compare_cards" vertex="1">
+          <mxGeometry height="32" width="175" x="802" y="442" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;" value="get_promotions" vertex="1">
+          <mxGeometry height="32" width="175" x="1007" y="442" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;" value="get_card_details" vertex="1">
+          <mxGeometry height="32" width="175" x="802" y="482" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;" value="list_all_cards" vertex="1">
+          <mxGeometry height="32" width="175" x="1007" y="482" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9C3;strokeColor=#CA8A04;fontSize=12;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;" value="reload_data" vertex="1">
+          <mxGeometry height="32" width="175" x="802" y="522" as="geometry" />
+        </mxCell>
+        <mxCell id="t-resource" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CA8A04;fontSize=11;fontStyle=2;fontColor=#713F12;align=center;verticalAlign=middle;strokeWidth=1.5;dashed=1;dashPattern=4 4;" value="+ 2 resources&#10;card://  ·  channels://" vertex="1">
+          <mxGeometry height="32" width="175" x="1007" y="522" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be-loader" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0D9488;fontSize=12;fontColor=#0F766E;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;data_loader.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;line-height:1.5;&quot;&gt;@lru_cache 載入&lt;br&gt;merged_cards.json&lt;br&gt;promotions.json&lt;br&gt;channels.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="115" width="250" x="1210" y="358" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be-system" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=12;fontColor=#78350F;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;System Prompt 約束&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;line-height:1.5;&quot;&gt;cards_owned 固定為勾選清單&lt;br&gt;off-topic 不得呼叫工具&lt;br&gt;conditions / is_fallback 必須轉述&lt;/span&gt;" vertex="1">
+          <mxGeometry height="115" width="250" x="1210" y="483" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Layer 3: Anthropic Cloud ===================== -->
+        <mxCell id="layer3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7ED;strokeColor=#FB923C;fontSize=16;fontStyle=1;fontColor=#9A3412;align=left;verticalAlign=top;spacingLeft=18;spacingTop=10;strokeWidth=1.5;" value="③  Anthropic Cloud — Claude API + MCP Connector" vertex="1">
+          <mxGeometry height="170" width="1420" x="40" y="652" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cl-claude" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#EA580C;fontSize=12;fontColor=#9A3412;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;Claude API&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#7C2D12;line-height:1.6;&quot;&gt;claude-sonnet-4-6&lt;br&gt;Tool Use via MCP&lt;br&gt;Streaming response&lt;/span&gt;" vertex="1">
+          <mxGeometry height="125" width="250" x="296" y="680" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cl-connector" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FED7AA;strokeColor=#EA580C;fontSize=12;fontColor=#9A3412;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;MCP Connector&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#7C2D12;line-height:1.6;&quot;&gt;mcp_servers param&lt;br&gt;beta: mcp-client-2025-04-04&lt;br&gt;auto tools/list + tools/call&lt;/span&gt;" vertex="1">
+          <mxGeometry height="125" width="250" x="564" y="680" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cl-flow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FB923C;fontSize=12;fontColor=#7C2D12;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:14px;color:#9A3412;&quot;&gt;Chat flow （每輪對話）&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;line-height:1.7;&quot;&gt;1.  /api/chat 送入 message + history + cards_owned&lt;br&gt;2.  Claude 判斷需呼工具 → MCP Connector 連 /mcp&lt;br&gt;3.  FastMCP 執行對應 tool → 回傳 JSON&lt;br&gt;4.  Claude 整合結果 → SSE 串流寫回前端&lt;br&gt;5.  前端逐字渲染 text + tool_use chips&lt;/span&gt;" vertex="1">
+          <mxGeometry height="125" width="630" x="828" y="680" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Layer 4: Data + Scraper ===================== -->
+        <mxCell id="layer4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9FAFB;strokeColor=#9CA3AF;fontSize=16;fontStyle=1;fontColor=#374151;align=left;verticalAlign=top;spacingLeft=18;spacingTop=10;strokeWidth=1.5;" value="④  Data Layer + Scraper （Build-time，離線執行）" vertex="1">
+          <mxGeometry height="410" width="1420" x="40" y="852" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d-merged" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=14;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;merged_cards.json&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;★ Runtime 唯一資料源&lt;br&gt;13 張卡 · channels + deals&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="260" x="68" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="d-promos" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=14;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;promotions.json&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;24 筆優惠活動&lt;br&gt;中信 19 + 富邦 5&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="260" x="68" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="d-channels" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#4B5563;fontSize=12;fontColor=#1F2937;align=center;boundedLbl=1;backgroundOutline=1;size=14;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:14px;&quot;&gt;channels.json&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;通路分類對照表（17 種）&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="260" x="68" y="1130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="scraper-box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#16A34A;fontSize=14;fontStyle=1;fontColor=#14532D;align=center;verticalAlign=top;spacingTop=10;strokeWidth=2;" value="scraper/ — Build-time pipeline" vertex="1">
+          <mxGeometry height="340" width="1070" x="368" y="890" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sc-ctbc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=12;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;ctbc_scraper.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;HTTP GET + JSON parse&lt;br&gt;→ ctbc_cards.json&lt;br&gt;→ promotions.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="225" x="395" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="sc-feat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=12;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;card_feature_scraper.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;HTTP + BeautifulSoup&lt;br&gt;→ card_features.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="225" x="640" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="sc-micro" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=12;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;shadow=1;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;microsite_scraper.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;商家層級優惠擷取&lt;br&gt;→ microsite_deals.json&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="225" x="885" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="sc-fubon" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9CA3AF;fontSize=12;fontColor=#475569;align=center;verticalAlign=middle;strokeWidth=1.5;dashed=1;dashPattern=4 4;" value="&lt;b style=&quot;font-size:13px;color:#374151;&quot;&gt;fubon_cards.json&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;&quot;&gt;人工整理（7 張）&lt;br&gt;無公開 API&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="225" x="1190" y="930" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sc-merge" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBF7D0;strokeColor=#16A34A;fontSize=12;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=2.5;shadow=1;" value="&lt;b style=&quot;font-size:15px;&quot;&gt;merge.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;line-height:1.5;&quot;&gt;三層合併（聚合節點）&lt;br&gt;microsite → features → cards&lt;br&gt;→ merged_cards.json (v2.0)&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="290" x="608" y="1080" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sc-tests" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#16A34A;fontSize=12;fontColor=#14532D;align=center;verticalAlign=middle;strokeWidth=1.5;" value="&lt;b style=&quot;font-size:13px;&quot;&gt;tests/test_mcp_tools.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#475569;&quot;&gt;deterministic 單元測試&lt;br&gt;不需 LLM API&lt;/span&gt;" vertex="1">
+          <mxGeometry height="120" width="225" x="1190" y="1080" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Edges ===================== -->
+
+        <!-- L1 → L2 -->
+        <mxCell id="e-react-rest" parent="1" edge="1" source="ui-react" target="be-rest" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#0D9488;fontSize=12;fontStyle=1;fontColor=#0F766E;labelBackgroundColor=#F0FDFA;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="REST /api/cards">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-react-chat" edge="1" parent="1" source="ui-react" target="be-chat" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;strokeColor=#0D9488;fontSize=11;fontStyle=1;fontColor=#0F766E;exitX=0.6;exitY=1;entryX=0.4;entryY=0;" value="&lt;b&gt;POST /api/chat&lt;/b&gt;&lt;br&gt;SSE stream">
+        <mxCell id="e-react-chat" parent="1" edge="1" source="ui-chat" target="be-chat" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=3;strokeColor=#0D9488;fontSize=12;fontStyle=1;fontColor=#0F766E;labelBackgroundColor=#F0FDFA;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="POST /api/chat &amp;nbsp; ·  SSE stream">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-chat-claude" edge="1" parent="1" source="be-chat" target="cl-claude" style="endArrow=classic;html=1;rounded=0;edgeStyle=none;strokeWidth=2.5;strokeColor=#D97706;fontSize=11;fontStyle=1;fontColor=#B45309;startArrow=classic;startFill=1;dashed=1;dashPattern=6 4;exitX=0.3;exitY=1;entryX=0.5;entryY=0;" value="&lt;b&gt;messages.stream&lt;/b&gt;&lt;br&gt;(mcp_servers=[{url}])">
+
+        <!-- L2 → L3 (chat → claude, dashed downward) -->
+        <mxCell id="e-chat-claude" parent="1" edge="1" source="be-chat" target="cl-claude" style="endArrow=classic;html=1;rounded=0;strokeWidth=2.5;strokeColor=#D97706;fontSize=12;fontStyle=1;fontColor=#B45309;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=8 4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="Anthropic SDK&#10;beta.messages.stream">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-connector-mcp" edge="1" parent="1" source="cl-connector" target="be-mcp" style="endArrow=classic;html=1;rounded=0;edgeStyle=none;strokeWidth=3;strokeColor=#EA580C;fontSize=11;fontStyle=1;fontColor=#9A3412;startArrow=classic;startFill=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" value="&lt;b&gt;MCP JSON-RPC&lt;/b&gt;&lt;br&gt;tools/list + tools/call">
+
+        <!-- L3 → L2 (connector → mcp, solid upward) -->
+        <mxCell id="e-connector-mcp" parent="1" edge="1" source="cl-connector" target="be-mcp" style="endArrow=classic;html=1;rounded=0;strokeWidth=3;strokeColor=#EA580C;fontSize=12;fontStyle=1;fontColor=#9A3412;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" value="MCP /mcp&#10;tools/list · tools/call">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-mcp-tools" edge="1" parent="1" source="be-mcp" target="be-tools-box" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#CA8A04;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" value="">
+
+        <!-- L2 internal: chat → mcp (chat calls Anthropic, Anthropic calls back; visual hint) is implicit via L2↔L3 arrows -->
+
+        <!-- L2 internal: mcp → tools -->
+        <mxCell id="e-mcp-tools" parent="1" edge="1" source="be-mcp" target="be-tools-box" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#CA8A04;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-tools-loader" edge="1" parent="1" source="be-tools-box" target="be-loader" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#9CA3AF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" value="">
+
+        <!-- L2 internal: tools → loader -->
+        <mxCell id="e-tools-loader" parent="1" edge="1" source="be-tools-box" target="be-loader" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#94A3B8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-loader-data" edge="1" parent="1" source="be-loader" target="d-merged" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;strokeColor=#9CA3AF;exitX=0.2;exitY=1;entryX=0.8;entryY=0;" value="">
+
+        <!-- merge.py → merged_cards.json -->
+        <mxCell id="e-merge-merged" parent="1" edge="1" source="sc-merge" target="d-merged" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2.5;strokeColor=#16A34A;fontSize=12;fontStyle=1;fontColor=#14532D;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" value="build">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-merge-merged" edge="1" parent="1" source="sc-merge" target="d-merged" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=2.5;strokeColor=#16A34A;fontSize=11;fontStyle=1;fontColor=#14532D;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" value="build">
+
+        <!-- scraper inputs → merge.py -->
+        <mxCell id="e-ctbc-merge" parent="1" edge="1" source="sc-ctbc" target="sc-merge" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=1.5;strokeColor=#16A34A;dashed=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-feat-merge" parent="1" edge="1" source="sc-feat" target="sc-merge" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=1.5;strokeColor=#16A34A;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-micro-merge" parent="1" edge="1" source="sc-micro" target="sc-merge" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=1.5;strokeColor=#16A34A;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-fubon-merge" parent="1" edge="1" source="sc-fubon" target="sc-merge" style="endArrow=classic;html=1;rounded=1;edgeStyle=orthogonalEdgeStyle;strokeWidth=1.5;strokeColor=#9CA3AF;dashed=1;dashPattern=4 4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
