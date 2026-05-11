@@ -5,66 +5,14 @@ import { WelcomeSection } from './components/WelcomeSection';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { CardSelectionPage } from './components/CardSelectionPage';
-import { fetchCards, recommendPayment } from './api';
-import type { CardMenuItem, SearchResult } from './api';
-
-interface Recommendation {
-  cardId: string;
-  rank: number;
-  cardName: string;
-  channel: string;
-  rewardRate: string;
-  estimatedCashback: string;
-  monthlyCap: string;
-  expirationDate: string;
-  conditions: string[];
-  reason: string;
-  color: string;
-  badges?: string[];
-}
+import { fetchCards, streamChat } from './api';
+import type { CardMenuItem, ChatHistoryItem } from './api';
+import type { ToolCall } from './components/ChatMessage';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  recommendations?: Recommendation[];
-}
-
-// Rank-based gradient colors
-const RANK_COLORS = [
-  'from-green-500 to-green-600',
-  'from-amber-500 to-amber-600',
-  'from-fuchsia-500 to-fuchsia-600',
-];
-
-function toRecommendation(r: SearchResult, rank: number, channel: string): Recommendation {
-  const rate = r.cashback_rate != null ? `${(r.cashback_rate * 100).toFixed(1)}%` : '—';
-  const est = r.estimated_cashback != null ? `NT$ ${r.estimated_cashback.toLocaleString()}` : '—';
-  const cap = r.max_cashback_per_period != null
-    ? `NT$ ${r.max_cashback_per_period.toLocaleString()}/期`
-    : '無上限';
-  const badges: string[] = [];
-  if (rank === 1) badges.push('最高回饋');
-  if (r.expiring_soon) badges.push('即將到期');
-  if (r.is_fallback) badges.push('一般消費回饋');
-
-  const conditions: string[] = [];
-  if (r.conditions) conditions.push(r.conditions);
-  if (r.cashback_description) conditions.push(r.cashback_description);
-
-  return {
-    cardId: r.card_id,
-    rank,
-    cardName: r.card_name,
-    channel,
-    rewardRate: `${rate} 回饋`,
-    estimatedCashback: est,
-    monthlyCap: cap,
-    expirationDate: r.valid_end ?? '長期有效',
-    conditions,
-    reason: r.reason || r.cashback_description || `此卡在「${channel}」通路的回饋率為 ${rate}。`,
-    color: RANK_COLORS[rank - 1] ?? RANK_COLORS[2],
-    badges: badges.length > 0 ? badges : undefined,
-  };
+  toolCalls?: ToolCall[];
 }
 
 export default function App() {
@@ -118,59 +66,89 @@ export default function App() {
     setInputValue(prompt);
   };
 
-  const handleSendMessage = async (message: string) => {
-    setShowWelcome(false);
+  const selectedCardInfos = () =>
+    selectedCards
+      .map((id) => {
+        const c = allCards.find((x) => x.card_id === id);
+        return c ? { card_id: c.card_id, card_name: c.card_name } : null;
+      })
+      .filter((x): x is { card_id: string; card_name: string } => x !== null);
 
+  const buildHistory = (): ChatHistoryItem[] =>
+    messages.map((m) => ({ role: m.role, content: m.content }));
+
+  const handleSendMessage = async (message: string) => {
+    if (selectedCards.length === 0) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: message },
+        { role: 'assistant', content: '請先在左側選擇您持有的信用卡，我才能為您推薦最適合的刷卡選擇。' },
+      ]);
+      return;
+    }
+
+    setShowWelcome(false);
     const userMessage: Message = { role: 'user', content: message };
-    setMessages((prev) => [...prev, userMessage]);
+    const historyForServer = buildHistory();
+
+    setMessages((prev) => [...prev, userMessage, { role: 'assistant', content: '', toolCalls: [] }]);
     setIsLoading(true);
 
+    const assistantIndex = messages.length + 1;
+    let textBuffer = '';
+    const toolCalls: ToolCall[] = [];
+
     try {
-      const data = await recommendPayment(message, selectedCards);
-
-      if (data.error) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: `抱歉，查詢時發生錯誤：${data.error}` },
-        ]);
-        return;
-      }
-
-      // 與信用卡無關的提問 → 顯示拒答訊息，不渲染推薦卡
-      if (data.off_topic_message) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: data.off_topic_message! },
-        ]);
-        return;
-      }
-
-      // Convert API response to Recommendation[]
-      const recs: Recommendation[] = [];
-      let globalRank = 1;
-      for (const rec of data.recommendations) {
-        const results = rec.best_options ?? [];
-        for (const r of results) {
-          if (globalRank > 3) break;
-          recs.push(toRecommendation(r, globalRank, rec.channel_name));
-          globalRank++;
-        }
-        if (globalRank > 3) break;
-      }
-
-      const channelNames = data.recommendations.map((r) => r.channel_name).join('、');
-      const amountText = data.parsed.amount > 0 ? `消費 NT$ ${data.parsed.amount.toLocaleString()} 元` : '';
-      const summary = `根據您的問題「${message}」，系統識別出通路：${channelNames}${amountText ? `，${amountText}` : ''}。以下是最佳付款選項：`;
-
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: summary, recommendations: recs },
-      ]);
+      await streamChat(
+        message,
+        selectedCardInfos(),
+        historyForServer,
+        {
+          onText: (delta) => {
+            textBuffer += delta;
+            setMessages((prev) => {
+              const next = [...prev];
+              if (next[assistantIndex]) {
+                next[assistantIndex] = { ...next[assistantIndex], content: textBuffer };
+              }
+              return next;
+            });
+          },
+          onToolUse: (evt) => {
+            toolCalls.push({ name: evt.tool_name, input: evt.input });
+            setMessages((prev) => {
+              const next = [...prev];
+              if (next[assistantIndex]) {
+                next[assistantIndex] = { ...next[assistantIndex], toolCalls: [...toolCalls] };
+              }
+              return next;
+            });
+          },
+          onError: (msg) => {
+            setMessages((prev) => {
+              const next = [...prev];
+              if (next[assistantIndex]) {
+                next[assistantIndex] = {
+                  ...next[assistantIndex],
+                  content: `抱歉，發生錯誤：${msg}`,
+                };
+              }
+              return next;
+            });
+          },
+        },
+      );
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '抱歉，無法連線到伺服器，請確認 MCP Server 是否已啟動。' },
-      ]);
+      setMessages((prev) => {
+        const next = [...prev];
+        if (next[assistantIndex]) {
+          next[assistantIndex] = {
+            ...next[assistantIndex],
+            content: '抱歉，無法連線到伺服器，請確認後端是否已啟動。',
+          };
+        }
+        return next;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -222,11 +200,11 @@ export default function App() {
                       key={index}
                       role={message.role}
                       content={message.content}
-                      recommendations={message.recommendations}
+                      toolCalls={message.toolCalls}
                     />
                   ))}
 
-                  {isLoading && (
+                  {isLoading && messages[messages.length - 1]?.content === '' && (
                     <div className="flex items-center gap-3 px-4 py-3">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#007C7C' }}>
                         <span className="text-white text-xs font-bold">AI</span>

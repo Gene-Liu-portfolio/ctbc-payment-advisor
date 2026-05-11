@@ -6,11 +6,12 @@ python-dotenv>=1.0.0
 rich>=13.0.0
 jsonschema>=4.21.0
 
-# MCP Server
+# MCP Server (FastMCP + Streamable HTTP)
 mcp>=1.0.0
 
-# Agent
+# Anthropic Claude API (給 /api/chat 端點透過 MCP Connector 呼叫工具)
 anthropic>=0.40.0
 
-# HTTP deployment
+# Unified ASGI app (REST + MCP + Chat)
 uvicorn>=0.30.0
+starlette>=0.37.0

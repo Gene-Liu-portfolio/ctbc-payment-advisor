@@ -1,23 +1,26 @@
 """
 http_app.py
 -----------
-獨立的 REST API 伺服器，供 React 前端串接。
-
-不依賴 FastMCP 的 custom_route，改用純 Starlette 建立 ASGI app，
-避免 FastMCP import 時的 event-loop 阻塞問題。
-
-預設提供：
-  - GET  /            → 服務資訊
-  - GET  /health      → 健康檢查
-  - GET  /api/cards   → REST: 卡片清單
-  - POST /api/search  → REST: 通路最優卡查詢
-  - POST /api/recommend → REST: 情境推薦
-  - POST /api/compare → REST: 多卡比較
-  - POST /api/promotions → REST: 優惠活動
-  - POST /api/card-details → REST: 單卡詳情
+統一 ASGI 應用：同時提供
+  - REST API（/api/*）— 給 React 前端直接呼叫
+  - MCP Streamable HTTP（/mcp）— 給 Claude API 的 MCP Connector 連線
+  - Chat 端點（/api/chat）— React 透過此端點與 Claude 多輪對話，Claude 再透過
+    MCP Connector 自動呼叫 /mcp 上的工具（真 MCP 協定，非 function-calling 包裝）
 
 啟動方式：
     python -m mcp_server.http_app
+
+主要端點：
+  - GET  /                → 服務資訊
+  - GET  /health          → 健康檢查
+  - GET  /api/cards       → 卡片清單
+  - POST /api/search      → 通路最優卡查詢
+  - POST /api/recommend   → 情境推薦（deterministic，不走 LLM）
+  - POST /api/compare     → 多卡比較
+  - POST /api/promotions  → 優惠活動
+  - POST /api/card-details → 單卡詳情
+  - POST /api/chat        → Claude SSE 串流（透過 MCP Connector 呼叫工具）
+  - *    /mcp/*           → MCP Streamable HTTP（給 Claude API 用）
 """
 
 from __future__ import annotations
@@ -29,13 +32,15 @@ from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
-from starlette.routing import Route
+from starlette.routing import Mount, Route
 
-from .tools.search import search_by_channel as _search_by_channel
-from .tools.recommend import recommend_payment as _recommend_payment
+from .chat import chat_endpoint
+from .server import mcp as mcp_server
 from .tools.compare import compare_cards as _compare_cards
-from .tools.promotions import get_promotions as _get_promotions
 from .tools.promotions import get_card_details as _get_card_details
+from .tools.promotions import get_promotions as _get_promotions
+from .tools.recommend import recommend_payment as _recommend_payment
+from .tools.search import search_by_channel as _search_by_channel
 from .utils.data_loader import get_cards_menu, get_data_summary
 
 
@@ -43,9 +48,13 @@ from .utils.data_loader import get_cards_menu, get_data_summary
 
 async def home(_: Request):
     return JSONResponse({
-        "service": "CTBC Payment Advisor REST API",
-        "health": "/health",
-        "rest_api": "/api/cards",
+        "service": "CTBC Payment Advisor",
+        "endpoints": {
+            "health": "/health",
+            "rest_api": "/api/cards",
+            "chat": "/api/chat",
+            "mcp": "/mcp",
+        },
     })
 
 
@@ -90,7 +99,7 @@ async def api_search(request: Request):
 
 
 async def api_recommend(request: Request):
-    """POST /api/recommend — 情境推薦。"""
+    """POST /api/recommend — 情境推薦（deterministic，無 LLM）。"""
     try:
         body = await request.json()
     except Exception:
@@ -160,6 +169,13 @@ async def api_card_details(request: Request):
 
 
 # ── App setup ────────────────────────────────────────────────────────────────
+# 同時掛載 REST + MCP Streamable HTTP：Claude API 的 mcp_servers 參數
+# 會直接連到 /mcp/，由 FastMCP 處理 tools/list 與 tools/call。
+#
+# 重要：FastMCP 的 session_manager 需要 lifespan 啟動，因此外層 Starlette
+# 必須繼承 streamable_http_app 的 lifespan。
+
+mcp_app = mcp_server.streamable_http_app()
 
 routes = [
     Route("/", home, methods=["GET"]),
@@ -170,9 +186,11 @@ routes = [
     Route("/api/compare", api_compare, methods=["POST"]),
     Route("/api/promotions", api_promotions, methods=["POST"]),
     Route("/api/card-details", api_card_details, methods=["POST"]),
+    Route("/api/chat", chat_endpoint, methods=["POST"]),
+    Mount("/mcp", app=mcp_app),
 ]
 
-app = Starlette(routes=routes)
+app = Starlette(routes=routes, lifespan=mcp_app.router.lifespan_context)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -182,7 +200,7 @@ app.add_middleware(
 
 
 def main():
-    """Run the REST API server locally."""
+    """Run the unified server locally."""
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
     uvicorn.run("mcp_server.http_app:app", host=host, port=port, reload=False)

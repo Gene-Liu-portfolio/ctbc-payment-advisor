@@ -2,22 +2,23 @@
 
 **中國信託 × 台北富邦 信用卡支付建議系統**
 
-基於 **Agent × MCP（Model Context Protocol）** 架構的智慧刷卡建議服務。透過自然語言輸入消費情境，從使用者持有的 **13 張熱門信用卡**（中信 6 + 富邦 7）中推薦最佳刷卡選擇。
+基於 **React × Claude × MCP（Model Context Protocol）** 架構的智慧刷卡建議服務。React 前端透過 Anthropic **MCP Connector** 讓 Claude 直接以 MCP 協定呼叫工具（非 function-calling 包裝），從使用者持有的 **13 張熱門信用卡**（中信 6 + 富邦 7）中推薦最佳刷卡選擇。
 
-> 資料版本：2026-04-22 | 架構版本：v7.0
+> 資料版本：2026-05-02 | 架構版本：v8.0（React-only + MCP Connector）
 
 ---
 
 ## Features
 
+- **單一前端（React）** — Vite + React 18 + Tailwind 4 + Radix UI 統一 demo 介面
+- **真 MCP 協定整合** — Claude API 透過 `mcp_servers` 參數直接連 `/mcp`，前端可即時看到 Claude 呼叫了哪些工具
+- **多輪對話 + SSE 串流** — `/api/chat` 以 Server-Sent Events 即時推送文字增量與 tool_use 事件
 - **情境推薦** — 輸入「去全聯買菜 1500 元」，自動推薦最優卡與預估回饋
 - **多通路解析** — 一次輸入可辨識多個通路（如全聯 + foodpanda），分別推薦
-- **海外消費辨識** — 關鍵字 + LLM 雙層偵測，自動查詢海外通路回饋率
-- **持卡比較** — 全通路一覽表，標記每個通路的最優卡
+- **持卡比較 / 優惠查詢 / 單卡詳情** — 透過 chat 自然觸發對應 MCP 工具
+- **海外消費辨識** — 由 Claude 自行判斷後呼叫 `overseas_general` 通路
 - **回饋種類區分** — 現金 / LINE Points / OPENPOINT / 哩程 / 紅利點數
-- **偏好篩選** — Gradio 介面支援勾選偏好回饋種類，結果優先排序
-- **優惠提醒** — 查看目前有效的優惠活動，提醒即將到期的優惠
-- **多輪對話** — CLI Agent 記憶上下文，支援連續追問
+- **優惠到期提醒** — `expiring_soon` 自動標記，Claude 會主動提醒
 
 ---
 
@@ -95,28 +96,43 @@
 ## Architecture
 
 ```
- User Interface          Agent Layer              MCP Server             Data Layer
-┌──────────────┐    ┌──────────────────┐    ┌──────────────────┐    ┌────────────────┐
-│ Gradio Web   │───>│                  │    │  FastMCP Server  │    │ merged_cards   │
-│ gradio_app.py│    │  PaymentAgent    │    │  (7 Tools)       │    │   .json        │
-│              │    │  Groq LLM        │───>│                  │───>│ (build-time    │
-│ CLI Agent    │───>│  llama-3.3-70b   │    │  search          │    │  3-layer merge)│
-│ main.py      │    │                  │    │  recommend       │    │                │
-│              │    │  mcp_bridge.py   │    │  compare         │    │ promotions     │
-│              │    │  (dynamic tool   │    │  promotions      │    │   .json        │
-│              │    │   discovery)     │    │  card_details    │    │                │
-└──────────────┘    └──────────────────┘    └──────────────────┘    └────────────────┘
-                         │                          │
-                    cards_owned               deals → channels
-                    auto-injection            (2-layer priority)
+  Frontend (Browser)              Backend (Unified ASGI)               Anthropic Cloud
+┌─────────────────────┐      ┌────────────────────────────┐      ┌──────────────────┐
+│  React Web Demo     │      │  mcp_server/http_app.py    │      │   Claude API     │
+│  Vite + Radix + TW  │      │  (Starlette + uvicorn)     │      │  Sonnet 4.6      │
+│                     │ POST │                            │      │                  │
+│  ChatInput  ──────────────>│  /api/chat (SSE stream) ───────────────> messages    │
+│  ChatMessage <─ SSE ───────│   ↑       mcp_servers=[                  .stream()   │
+│   ├─ text deltas   │       │   │         {url:/mcp}]                  betas=[...] │
+│   └─ tool_use chips│       │   └─ relay events back ◄───────────  tool_use blocks │
+│                     │      │                            │              │          │
+│  REST 直連（fallback）── ──>│  /api/cards /api/search   │              │          │
+│                     │      │  /api/recommend /api/...   │              ▼          │
+└─────────────────────┘      │                            │      ┌──────────────────┐
+                             │  /mcp (FastMCP Streamable) │<─────│  MCP Connector   │
+                             │   ├─ search_by_channel     │      │ (Anthropic 端)   │
+                             │   ├─ recommend_payment     │      │  tools/list      │
+                             │   ├─ compare_cards         │      │  tools/call      │
+                             │   ├─ get_promotions        │      └──────────────────┘
+                             │   ├─ get_card_details      │
+                             │   ├─ list_all_cards        │
+                             │   └─ reload_data           │
+                             └────────────┬───────────────┘
+                                          ▼
+                                  ┌───────────────────┐
+                                  │ data/processed/   │
+                                  │  merged_cards.json│
+                                  │  promotions.json  │
+                                  │  channels.json    │
+                                  └───────────────────┘
 ```
 
 **Key Design Decisions:**
 
+- **真 MCP Connector**（非 function calling）— `/api/chat` 後端呼叫 `anthropic.beta.messages.stream(mcp_servers=[...])`，Claude 直接以 MCP JSON-RPC 連 `/mcp`，前端零侵入即可看到 `tool_use` 事件
+- **Unified ASGI app** — REST API、SSE chat、MCP Streamable HTTP 全部由同一個 Starlette + uvicorn 提供（port 8000），方便 Render 單服務部署
 - **Build-time merge** — 三層資料（API + card_features + microsite_deals）在 build time 合併為 `merged_cards.json`，runtime 只需查兩層
-- **Dynamic tool discovery** — Agent 啟動時透過 MCP `tools/list` 動態發現工具，不硬編碼 Schema
-- **cards_owned injection** — 持卡清單由 Agent 自動注入，LLM 無法偽造或推薦未持有的卡
-- **Gradio 解耦** — 前端自帶通路解析邏輯，不 import MCP Server 內部模組
+- **System prompt 強制 cards_owned 範圍** — Claude 自行呼叫工具，但 prompt 嚴格規定 `cards_owned` 參數只能用使用者勾選的 card_id；超出範圍視為違規
 
 ---
 
@@ -124,8 +140,8 @@
 
 ### Prerequisites
 
-- Python 3.10+
-- [Groq API Key](https://console.groq.com)（免費申請）
+- Python 3.10+ 與 Node 18+
+- [Anthropic API Key](https://console.anthropic.com)
 
 ### Installation
 
@@ -133,47 +149,52 @@
 git clone https://github.com/Gene-Liu-portfolio/ctbc-payment-advisor.git
 cd ctbc-payment-advisor
 
+# Backend
 python -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env and add your GROQ_API_KEY
+# 編輯 .env 填入 ANTHROPIC_API_KEY
+
+# Frontend
+cd "Credit Card AI Payment Advisor"
+npm install
 ```
 
 ### Usage
 
-**Gradio Web Demo（推薦）**
+**1. 啟動後端**（同時提供 REST + MCP + Chat，port 8000）
 
 ```bash
-python gradio_app.py
-```
-
-勾選持有的信用卡 → 選擇偏好回饋種類 → 輸入消費金額與情境 → 查詢最優刷卡
-
-**CLI Agent 多輪對話**
-
-```bash
-python main.py
-```
-
-```
-> 我今天要去全聯買菜花了 1500 元，哪張卡最划算？
-> 下週要去日本旅遊，海外消費用哪張？
-> 我的卡最近有哪些快到期的優惠？
-```
-
-輸入 `q` 離開，`r` 重置對話記憶。
-
-**MCP Server（獨立啟動）**
-
-```bash
-# HTTP 模式（本地測試 / 部署）
 python -m mcp_server.http_app
-
-# stdio 模式（Claude Desktop 整合）
-python -m mcp_server.server
 ```
+
+端點：
+- `GET  /api/cards` — 卡片清單
+- `POST /api/chat` — Claude SSE 串流（透過 MCP Connector 呼叫工具）
+- `POST /api/{search,recommend,compare,promotions,card-details}` — REST deterministic 查詢
+- `*    /mcp` — MCP Streamable HTTP（給 Claude API 用，需公網 HTTPS 才有 effect）
+
+**2. 啟動前端**（Vite dev server，port 5173，自動 proxy `/api/*` 與 `/mcp` 到 8000）
+
+```bash
+cd "Credit Card AI Payment Advisor"
+npm run dev
+```
+
+開 `http://localhost:5173/`：勾選持有的卡 → 點 Start → 用自然語言聊天 → Claude 即時呼叫 MCP 工具回覆。
+
+> ⚠️ **本地 chat 限制**：Anthropic 機房需從公網連到你的 `/mcp`。本地測試請：
+> (a) 把 MCP Server 部署到 Render（已預先設定 default URL `https://ctbc-payment-advisor.onrender.com/mcp`），或
+> (b) 開 Cloudflared tunnel：`cloudflared tunnel --url http://localhost:8000`，再設 env `MCP_PUBLIC_URL=https://xxx.trycloudflare.com/mcp`。
+> 純走 REST API（不經 Claude）則無此限制。
+
+### Deployment（Render）
+
+1. Push 到 GitHub，Render 連 repo，使用 `pyproject.toml` 的 `ctbc-mcp-http` script
+2. 設 env `ANTHROPIC_API_KEY` 與（可選）`CLAUDE_AGENT_MODEL`
+3. Render 會把同一個服務同時對外暴露 `/api/*`、`/mcp`，前端設 `MCP_PUBLIC_URL` 為自己的 Render URL 即可閉環
 
 ---
 
@@ -227,11 +248,8 @@ ctbc_cards.json + fubon_cards.json     → 基礎卡片（13 張）
 ## Testing
 
 ```bash
-# 單元測試（103 tests, 0.06s, 不需 LLM API）
+# 單元測試（不需 LLM API，純資料邏輯）
 python -m pytest tests/test_mcp_tools.py -v
-
-# User Story 端對端測試（需 Groq API + MCP Server）
-python -m tests.test_user_stories
 ```
 
 ### Test Coverage
@@ -254,45 +272,51 @@ python -m tests.test_user_stories
 
 ```
 ctbc-payment-advisor/
-├── main.py                    # CLI Agent 入口
-├── gradio_app.py              # Gradio Web Demo（解耦設計）
-├── CTBC_Project_Overview.md   # 完整專案架構文件
-│
-├── agent/
-│   ├── payment_agent.py       # Groq LLM + Tool Calling
-│   ├── mcp_bridge.py          # Dynamic tool discovery + HTTP bridge
-│   └── prompts.py             # Dynamic system prompt
+├── Credit Card AI Payment Advisor/   # React Web Demo（唯一前端）
+│   ├── src/app/
+│   │   ├── App.tsx                   # 主畫面：卡片選擇 → 多輪 chat
+│   │   ├── api.ts                    # fetchCards + streamChat（SSE）
+│   │   └── components/
+│   │       ├── ChatInput.tsx
+│   │       ├── ChatMessage.tsx       # 顯示 text + tool_use chips
+│   │       ├── CardSelectionPage.tsx
+│   │       ├── LeftSidebar.tsx
+│   │       ├── WelcomeSection.tsx
+│   │       └── RecommendationCarousel.tsx
+│   └── vite.config.ts                # /api → :8000 proxy
 │
 ├── mcp_server/
-│   ├── server.py              # FastMCP Server (7 tools + 2 resources)
-│   ├── http_app.py            # HTTP deployment (uvicorn + Bearer token)
+│   ├── http_app.py            # ★ 統一 ASGI（REST + MCP + chat）
+│   ├── chat.py                # /api/chat — Claude MCP Connector + SSE
+│   ├── server.py              # FastMCP server 定義（7 tools + 2 resources）
 │   ├── tools/
-│   │   ├── search.py          # search_by_channel (deals → channels)
-│   │   ├── recommend.py       # recommend_payment (scenario parsing)
-│   │   ├── compare.py         # compare_cards (multi-card comparison)
+│   │   ├── search.py          # search_by_channel
+│   │   ├── recommend.py       # recommend_payment（情境解析）
+│   │   ├── compare.py         # compare_cards
 │   │   └── promotions.py      # get_promotions + get_card_details
 │   └── utils/
-│       ├── data_loader.py     # Unified data access (merged_cards.json)
-│       ├── calculator.py      # Cashback calculation
-│       └── channel_mapper.py  # Channel name normalization
+│       ├── data_loader.py     # merged_cards.json 統一存取
+│       ├── calculator.py      # 回饋計算
+│       └── channel_mapper.py  # 通路名稱正規化
 │
 ├── scraper/
-│   ├── ctbc_scraper.py        # CTBC official JSON API
-│   ├── card_feature_scraper.py # Card feature page scraping
-│   ├── microsite_scraper.py   # Microsite deals scraping
-│   ├── merge.py               # Build-time 3-layer merge
-│   └── channel_mapper.py      # Channel mapping (source of truth)
+│   ├── ctbc_scraper.py        # CTBC 官方 JSON API
+│   ├── card_feature_scraper.py # 卡片特色頁爬蟲
+│   ├── microsite_scraper.py   # 商家層級優惠爬蟲
+│   ├── merge.py               # Build-time 三層合併
+│   └── channel_mapper.py      # 通路對應表（source of truth）
 │
 ├── data/
 │   ├── processed/
-│   │   ├── merged_cards.json  # ★ Unified data source (build-time merged)
-│   │   ├── promotions.json    # 24 promotions (CTBC 19 + Fubon 5)
-│   │   └── channels.json      # Channel taxonomy
-│   └── scraped/               # Raw scraped data (input for merge)
+│   │   ├── merged_cards.json  # ★ Runtime 唯一卡片資料源
+│   │   ├── promotions.json    # 24 promotions
+│   │   └── channels.json      # 通路分類表
+│   ├── scraped/               # card_features.json + microsite_deals.json
+│   ├── schemas/card_schema.json  # JSON Schema 驗證
+│   └── seed/                  # bootstrap 備援
 │
 └── tests/
-    ├── test_mcp_tools.py      # 103 unit tests (deterministic)
-    └── test_user_stories.py   # 7 E2E scenarios (LLM-based)
+    └── test_mcp_tools.py      # 單元測試（deterministic，不需 LLM）
 ```
 
 ---
@@ -301,21 +325,26 @@ ctbc-payment-advisor/
 
 | Component | Technology |
 |-----------|-----------|
-| LLM | Groq API（`llama-3.3-70b-versatile` + `llama-3.1-8b-instant`） |
-| MCP Framework | FastMCP (Python mcp SDK) |
-| Transport | Streamable HTTP (SSE) |
-| Frontend | Gradio 4.x |
-| Data | JSON files (build-time merged) |
-| Testing | pytest (103 deterministic tests) |
+| LLM | Anthropic Claude API（Sonnet 4.6，預設） |
+| LLM ↔ Tools | **MCP Connector**（`anthropic.beta.messages.stream(mcp_servers=...)`，beta `mcp-client-2025-04-04`） |
+| MCP Framework | FastMCP（Python `mcp` SDK 1.27+） |
+| Transport | Streamable HTTP（SSE） |
+| Backend | Starlette + uvicorn（單一 ASGI） |
+| Frontend | React 18 + Vite 6 + TypeScript + Tailwind 4 + Radix UI |
+| Data | JSON files（build-time merged） |
+| Testing | pytest（deterministic，不需 LLM） |
 
 ---
 
 ## FAQ
 
-**Q: 需要 Groq API Key 嗎？**
+**Q: 需要哪些 API Key？**
 
-CLI Agent 和海外消費辨識需要。到 https://console.groq.com 免費申請，無需信用卡。
-Gradio Demo 的通路查詢不需要 LLM（直接呼叫 MCP Server）。
+只需 `ANTHROPIC_API_KEY`。到 https://console.anthropic.com 申請即可。Claude API 會代表你連到 `/mcp` 呼叫工具。
+
+**Q: 為什麼要用 MCP Connector，不直接 function calling？**
+
+兩者表面上都能讓 Claude 呼叫工具，但 MCP Connector 走 MCP JSON-RPC 協定，後端不需要把工具包成 function schema 餵給 Claude；也代表同一個 `/mcp` 可以同時被 Claude API、Claude Desktop、Cursor 等任何 MCP client 使用（規格相容）。
 
 **Q: 富邦卡的資料來源？**
 
@@ -325,7 +354,7 @@ Gradio Demo 的通路查詢不需要 LLM（直接呼叫 MCP Server）。
 
 1. 修改 `data/processed/` 中的原始 JSON
 2. 執行 `python -m scraper.merge` 重新合併
-3. 重啟 MCP Server
+3. 重啟（或 redeploy）後端
 
 ---
 

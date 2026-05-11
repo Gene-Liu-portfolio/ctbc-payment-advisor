@@ -53,6 +53,9 @@ mcp = FastMCP(
     ),
     host=os.getenv("MCP_HOST", os.getenv("HOST", "0.0.0.0")),
     port=int(os.getenv("MCP_PORT", os.getenv("PORT", "8000"))),
+    # streamable_http_app() 內部會掛載在這個 path；改為 "/" 讓我們在 http_app.py
+    # 透過 Mount("/mcp", ...) 對外，避免路徑重複成 /mcp/mcp。
+    streamable_http_path="/",
 )
 
 
