@@ -7,12 +7,14 @@ Phase 3：CTBC 支付建議 MCP Server（FastMCP）
     python -m mcp_server.server          # stdio 模式（給 Agent 使用）
     mcp dev mcp_server/server.py         # 開發模式（帶 Inspector UI）
 
-Tools（5個）：
+Tools（7個）：
     search_by_channel     → 依通路搜尋最優卡
     recommend_payment     → 依情境推薦最佳刷卡
     compare_cards         → 多卡回饋比較
     get_promotions        → 取得持有卡的優惠活動
     get_card_details      → 取得卡片完整資訊
+    list_all_cards        → 列出所有可用卡片 ID（輔助）
+    reload_data           → 重新載入資料（輔助）
 
 Resources（2個）：
     card://ctbc/{card_id}  → 單張卡片 JSON
@@ -51,6 +53,9 @@ mcp = FastMCP(
     ),
     host=os.getenv("MCP_HOST", os.getenv("HOST", "0.0.0.0")),
     port=int(os.getenv("MCP_PORT", os.getenv("PORT", "8000"))),
+    # streamable_http_app() 內部會掛載在這個 path；改為 "/" 讓我們在 http_app.py
+    # 透過 Mount("/mcp", ...) 對外，避免路徑重複成 /mcp/mcp。
+    streamable_http_path="/",
 )
 
 

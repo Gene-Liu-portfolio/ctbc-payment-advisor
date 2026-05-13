@@ -1,4 +1,4 @@
-import { Bot, User } from 'lucide-react';
+import { Bot, User, Wrench } from 'lucide-react';
 import { RecommendationCarousel } from './RecommendationCarousel';
 
 interface Recommendation {
@@ -15,13 +15,19 @@ interface Recommendation {
   badges?: string[];
 }
 
+export interface ToolCall {
+  name: string;
+  input: Record<string, unknown>;
+}
+
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
   recommendations?: Recommendation[];
+  toolCalls?: ToolCall[];
 }
 
-export function ChatMessage({ role, content, recommendations }: ChatMessageProps) {
+export function ChatMessage({ role, content, recommendations, toolCalls }: ChatMessageProps) {
   const isUser = role === 'user';
 
   return (
@@ -41,7 +47,23 @@ export function ChatMessage({ role, content, recommendations }: ChatMessageProps
           }`}
           style={isUser ? { backgroundColor: '#007C7C' } : { borderColor: 'rgba(44, 62, 80, 0.08)', color: '#2C3E50' }}
         >
-          <p className="text-sm leading-relaxed">{content}</p>
+          {/* MCP tool calls indicator */}
+          {!isUser && toolCalls && toolCalls.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {toolCalls.map((tc, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: '#E6F4F1', color: '#0F766E' }}
+                  title={JSON.stringify(tc.input)}
+                >
+                  <Wrench className="w-3 h-3" />
+                  {tc.name}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
         </div>
 
         {isUser && (

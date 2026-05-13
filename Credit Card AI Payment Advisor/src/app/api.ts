@@ -1,8 +1,12 @@
 /**
  * api.ts
  * ------
- * REST API client for CTBC Payment Advisor MCP Server.
- * All calls go to /api/* which Vite proxy forwards to the MCP Server.
+ * 前端 API client：
+ * - REST：列卡、推薦/比較/優惠/單卡詳情
+ *   （/api/recommend 會用 Haiku 輔助解析情境與產生理由；失敗時後端 fallback 到 regex）
+ * - SSE Chat：與 Claude 多輪對話，Claude 透過 MCP Connector 自動呼叫 /mcp 工具
+ *
+ * 所有路徑走 /api/*（Vite proxy 轉發到 http://127.0.0.1:8000）。
  */
 
 export interface CardMenuItem {
@@ -31,29 +35,30 @@ export interface SearchResult {
   reason?: string;
 }
 
-export interface SearchResponse {
-  channel_id: string;
-  channel_name: string;
-  query: string;
-  amount: number;
-  merchant_hint: string;
-  results: SearchResult[];
-  error: string | null;
+/** Claude messages 格式（user/assistant），content 為純文字。 */
+export interface ChatHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
-export interface RecommendResponse {
-  scenario: string;
-  parsed: {
-    channels: { name: string; channel_id: string }[];
-    amount: number;
-  };
-  recommendations: {
-    channel_name: string;
-    channel_id: string;
-    best_options: SearchResult[];
-  }[];
-  off_topic_message?: string;
-  error: string | null;
+export interface ToolUseEvent {
+  tool_name: string;
+  server_name: string;
+  input: Record<string, unknown>;
+}
+
+export interface ToolResultEvent {
+  tool_use_id: string;
+  is_error: boolean;
+  summary: string;
+}
+
+export interface ChatStreamHandlers {
+  onText?: (delta: string) => void;
+  onToolUse?: (evt: ToolUseEvent) => void;
+  onToolResult?: (evt: ToolResultEvent) => void;
+  onDone?: (stopReason: string | null) => void;
+  onError?: (message: string) => void;
 }
 
 /** GET /api/cards */
@@ -63,35 +68,80 @@ export async function fetchCards(): Promise<CardMenuItem[]> {
   return data.cards ?? [];
 }
 
-/** POST /api/search */
-export async function searchByChannel(
-  channel: string,
-  cardsOwned: string[],
-  amount: number = 0,
-  topK: number = 3,
-): Promise<SearchResponse> {
-  const res = await fetch('/api/search', {
+/**
+ * POST /api/chat — SSE 串流。
+ *
+ * 後端會以 `event: <type>\ndata: <json>\n\n` 格式吐：
+ *   - text       → 文字增量
+ *   - tool_use   → Claude 呼叫的 MCP 工具
+ *   - tool_result→ 工具回傳摘要
+ *   - done       → 結束（stop_reason）
+ *   - error      → 錯誤
+ */
+export async function streamChat(
+  message: string,
+  cardsOwned: { card_id: string; card_name: string }[],
+  history: ChatHistoryItem[],
+  handlers: ChatStreamHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      channel,
-      cards_owned: cardsOwned,
-      amount,
-      top_k: topK,
-    }),
+    body: JSON.stringify({ message, cards_owned: cardsOwned, history }),
+    signal,
   });
-  return res.json();
-}
 
-/** POST /api/recommend */
-export async function recommendPayment(
-  scenario: string,
-  cardsOwned: string[],
-): Promise<RecommendResponse> {
-  const res = await fetch('/api/recommend', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scenario, cards_owned: cardsOwned }),
-  });
-  return res.json();
+  if (!res.ok || !res.body) {
+    handlers.onError?.(`HTTP ${res.status}`);
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE 框格：以雙換行分隔
+    let idx;
+    while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      const raw = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+
+      let eventName = 'message';
+      let dataStr = '';
+      for (const line of raw.split('\n')) {
+        if (line.startsWith('event:')) eventName = line.slice(6).trim();
+        else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+      }
+      if (!dataStr) continue;
+
+      try {
+        const data = JSON.parse(dataStr);
+        switch (eventName) {
+          case 'text':
+            handlers.onText?.(data.text ?? '');
+            break;
+          case 'tool_use':
+            handlers.onToolUse?.(data as ToolUseEvent);
+            break;
+          case 'tool_result':
+            handlers.onToolResult?.(data as ToolResultEvent);
+            break;
+          case 'done':
+            handlers.onDone?.(data.stop_reason ?? null);
+            break;
+          case 'error':
+            handlers.onError?.(data.message ?? 'unknown error');
+            break;
+        }
+      } catch {
+        // 忽略無法解析的事件
+      }
+    }
+  }
 }

@@ -7,73 +7,20 @@ import { ChatInput } from './components/ChatInput';
 import { CardSelectionPage } from './components/CardSelectionPage';
 import { ThinkingPanel } from './components/ThinkingPanel';
 import type { ThinkingStep } from './components/ThinkingPanel';
-import { fetchCards } from './api';
-import type { CardMenuItem, SearchResult } from './api';
-
-interface Recommendation {
-  cardId: string;
-  rank: number;
-  cardName: string;
-  channel: string;
-  rewardRate: string;
-  estimatedCashback: string;
-  monthlyCap: string;
-  expirationDate: string;
-  conditions: string[];
-  reason: string;
-  color: string;
-  badges?: string[];
-}
+import { fetchCards, streamChat } from './api';
+import type { CardMenuItem, ChatHistoryItem } from './api';
+import type { ToolCall } from './components/ChatMessage';
 
 interface Message {
   id: number;
   role: 'user' | 'assistant';
   content: string;
-  recommendations?: Recommendation[];
+  toolCalls?: ToolCall[];
   thinkingSteps?: ThinkingStep[];
   thinkingDone?: boolean;
   thinkingElapsed?: number;
 }
 
-// Rank-based gradient colors
-const RANK_COLORS = [
-  'from-green-500 to-green-600',
-  'from-amber-500 to-amber-600',
-  'from-fuchsia-500 to-fuchsia-600',
-];
-
-function toRecommendation(r: SearchResult, rank: number, channel: string): Recommendation {
-  const rate = r.cashback_rate != null ? `${(r.cashback_rate * 100).toFixed(1)}%` : '—';
-  const est = r.estimated_cashback != null ? `NT$ ${r.estimated_cashback.toLocaleString()}` : '—';
-  const cap = r.max_cashback_per_period != null
-    ? `NT$ ${r.max_cashback_per_period.toLocaleString()}/期`
-    : '無上限';
-  const badges: string[] = [];
-  if (rank === 1) badges.push('最高回饋');
-  if (r.expiring_soon) badges.push('即將到期');
-  if (r.is_fallback) badges.push('一般消費回饋');
-
-  const conditions: string[] = [];
-  if (r.conditions) conditions.push(r.conditions);
-  if (r.cashback_description) conditions.push(r.cashback_description);
-
-  return {
-    cardId: r.card_id,
-    rank,
-    cardName: r.card_name,
-    channel,
-    rewardRate: `${rate} 回饋`,
-    estimatedCashback: est,
-    monthlyCap: cap,
-    expirationDate: r.valid_end ?? '長期有效',
-    conditions,
-    reason: r.reason || r.cashback_description || `此卡在「${channel}」通路的回饋率為 ${rate}。`,
-    color: RANK_COLORS[rank - 1] ?? RANK_COLORS[2],
-    badges: badges.length > 0 ? badges : undefined,
-  };
-}
-
-// Helper: update a single step in-place or append
 function applyStepEvent(
   steps: ThinkingStep[],
   tool: string,
@@ -83,7 +30,6 @@ function applyStepEvent(
 ): ThinkingStep[] {
   const next = [...steps];
   if (status === 'done') {
-    // Find last matching "calling" step for this tool (+ optional channel match)
     let idx = -1;
     for (let i = next.length - 1; i >= 0; i--) {
       if (next[i].tool === tool && next[i].status === 'calling') {
@@ -110,10 +56,10 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [allCards, setAllCards] = useState<CardMenuItem[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(0);
 
-  // Fetch cards from API on mount
   useEffect(() => {
     fetchCards()
       .then(setAllCards)
@@ -121,7 +67,6 @@ export default function App() {
       .finally(() => setCardsLoading(false));
   }, []);
 
-  // Auto-scroll to bottom when new messages appear
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -132,7 +77,7 @@ export default function App() {
     setSelectedCards((prev) =>
       prev.includes(cardId)
         ? prev.filter((id) => id !== cardId)
-        : [...prev, cardId]
+        : [...prev, cardId],
     );
   };
 
@@ -152,113 +97,120 @@ export default function App() {
     setInputValue(prompt);
   };
 
+  const selectedCardInfos = () =>
+    selectedCards
+      .map((id) => {
+        const card = allCards.find((x) => x.card_id === id);
+        return card ? { card_id: card.card_id, card_name: card.card_name } : null;
+      })
+      .filter((x): x is { card_id: string; card_name: string } => x !== null);
+
+  const buildHistory = (): ChatHistoryItem[] =>
+    messages.map((m) => ({ role: m.role, content: m.content }));
+
   const handleSendMessage = async (message: string) => {
+    if (selectedCards.length === 0) {
+      const userId = ++idCounter.current;
+      const assistantId = ++idCounter.current;
+      setMessages((prev) => [
+        ...prev,
+        { id: userId, role: 'user', content: message },
+        {
+          id: assistantId,
+          role: 'assistant',
+          content: '請先在左側選擇您持有的信用卡，我才能為您推薦最適合的刷卡選擇。',
+        },
+      ]);
+      return;
+    }
+
     setShowWelcome(false);
 
     const userId = ++idCounter.current;
     const assistantId = ++idCounter.current;
+    const historyForServer = buildHistory();
 
-    // Add user message + assistant placeholder in one update
     setMessages((prev) => [
       ...prev,
       { id: userId, role: 'user', content: message },
-      { id: assistantId, role: 'assistant', content: '', thinkingSteps: [], thinkingDone: false },
+      {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        toolCalls: [],
+        thinkingSteps: [],
+        thinkingDone: false,
+      },
     ]);
+    setIsLoading(true);
 
     const updateAssistant = (updater: (m: Message) => Message) => {
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? updater(m) : m)));
     };
 
+    let textBuffer = '';
+    const toolCalls: ToolCall[] = [];
+    const startedAt = Date.now();
+
     try {
-      const response = await fetch('/api/recommend/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario: message, cards_owned: selectedCards }),
-      });
-
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const chunks = buffer.split('\n\n');
-        buffer = chunks.pop() ?? '';
-
-        for (const chunk of chunks) {
-          const dataLine = chunk.split('\n').find((l) => l.startsWith('data:'));
-          if (!dataLine) continue;
-          try {
-            const event = JSON.parse(dataLine.replace(/^data:\s*/, ''));
-
-            if (event.type === 'tool_call') {
-              updateAssistant((m) => ({
-                ...m,
-                thinkingSteps: applyStepEvent(
-                  m.thinkingSteps ?? [],
-                  event.tool,
-                  event.status,
-                  event.label,
-                  event.channel,
-                ),
-              }));
-            } else if (event.type === 'thinking_done') {
-              updateAssistant((m) => ({
-                ...m,
-                thinkingDone: true,
-                thinkingElapsed: event.elapsed_seconds,
-              }));
-            } else if (event.type === 'result') {
-              const data = event.data;
-              if (data.off_topic_message) {
-                updateAssistant((m) => ({ ...m, content: data.off_topic_message }));
-              } else if (data.error) {
-                updateAssistant((m) => ({ ...m, content: `抱歉，查詢時發生錯誤：${data.error}` }));
-              } else {
-                // Each channel gets its best card first, then fill remaining slots
-                const MAX_CARDS = 4;
-                const recs: Recommendation[] = [];
-
-                // Pass 1: one best card per channel
-                for (const rec of data.recommendations) {
-                  const best = rec.best_options?.[0];
-                  if (best && recs.length < MAX_CARDS) {
-                    recs.push(toRecommendation(best, recs.length + 1, rec.channel_name));
-                  }
-                }
-
-                // Pass 2: fill remaining slots with 2nd-best cards
-                for (const rec of data.recommendations) {
-                  if (recs.length >= MAX_CARDS) break;
-                  const second = rec.best_options?.[1];
-                  if (second) {
-                    recs.push(toRecommendation(second, recs.length + 1, rec.channel_name));
-                  }
-                }
-
-                // Re-assign ranks sequentially
-                recs.forEach((r, i) => { r.rank = i + 1; });
-                const channelNames = data.recommendations.map((r: any) => r.channel_name).join('、');
-                const amountText = data.parsed.amount > 0
-                  ? `，消費 NT$ ${data.parsed.amount.toLocaleString()} 元`
-                  : '';
-                const summary = `系統識別出通路：${channelNames}${amountText}。以下是最佳付款選項：`;
-                updateAssistant((m) => ({ ...m, content: summary, recommendations: recs }));
-              }
-            }
-          } catch {
-            // ignore malformed SSE lines
-          }
-        }
-      }
+      await streamChat(
+        message,
+        selectedCardInfos(),
+        historyForServer,
+        {
+          onText: (delta) => {
+            textBuffer += delta;
+            updateAssistant((m) => ({ ...m, content: textBuffer }));
+          },
+          onToolUse: (evt) => {
+            toolCalls.push({ name: evt.tool_name, input: evt.input });
+            updateAssistant((m) => ({
+              ...m,
+              toolCalls: [...toolCalls],
+              thinkingSteps: applyStepEvent(
+                m.thinkingSteps ?? [],
+                evt.tool_name,
+                'calling',
+                `正在呼叫 ${evt.tool_name}`,
+              ),
+            }));
+          },
+          onToolResult: (evt) => {
+            const lastToolName = toolCalls[toolCalls.length - 1]?.name ?? 'tool_result';
+            updateAssistant((m) => ({
+              ...m,
+              thinkingSteps: applyStepEvent(
+                m.thinkingSteps ?? [],
+                lastToolName,
+                'done',
+                evt.summary || '工具查詢完成',
+              ),
+            }));
+          },
+          onDone: () => {
+            updateAssistant((m) => ({
+              ...m,
+              thinkingDone: true,
+              thinkingElapsed: Math.round((Date.now() - startedAt) / 1000),
+            }));
+          },
+          onError: (msg) => {
+            updateAssistant((m) => ({
+              ...m,
+              content: `抱歉，發生錯誤：${msg}`,
+              thinkingDone: true,
+            }));
+          },
+        },
+      );
     } catch {
       updateAssistant((m) => ({
         ...m,
-        content: '抱歉，無法連線到伺服器，請確認後端是否已啟動（python -m mcp_server.http_app）。',
+        content: '抱歉，無法連線到伺服器，請確認後端是否已啟動。',
+        thinkingDone: true,
       }));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -305,18 +257,21 @@ export default function App() {
                 <div className="p-6 space-y-6">
                   {messages.map((message) => (
                     <div key={message.id}>
-                      {/* ThinkingPanel lives above assistant content, sharing the same row */}
                       {message.role === 'assistant' &&
                         message.thinkingSteps &&
                         message.thinkingSteps.length > 0 && (
                           <div className="flex gap-3 mb-1">
-                            {/* Avatar — same as ChatMessage's assistant avatar */}
                             <div
                               className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                               style={{ background: 'linear-gradient(135deg, #007C7C 0%, #005c5c 100%)' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>
+                                <path d="M12 8V4H8" />
+                                <rect width="16" height="12" x="4" y="8" rx="2" />
+                                <path d="M2 14h2" />
+                                <path d="M20 14h2" />
+                                <path d="M15 13v2" />
+                                <path d="M9 13v2" />
                               </svg>
                             </div>
                             <div className="flex-1 min-w-0">
@@ -329,18 +284,30 @@ export default function App() {
                           </div>
                         )}
 
-                      {/* Only render ChatMessage when there's actual content */}
                       {(message.role === 'user' ||
                         message.content ||
-                        (message.recommendations && message.recommendations.length > 0)) && (
+                        (message.toolCalls && message.toolCalls.length > 0)) && (
                         <ChatMessage
                           role={message.role}
                           content={message.content}
-                          recommendations={message.recommendations}
+                          toolCalls={message.toolCalls}
                         />
                       )}
                     </div>
                   ))}
+
+                  {isLoading && messages[messages.length - 1]?.content === '' && (
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#007C7C' }}>
+                        <span className="text-white text-xs font-bold">AI</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#007C7C', animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#007C7C', animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#007C7C', animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
