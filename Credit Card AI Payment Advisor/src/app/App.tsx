@@ -5,14 +5,46 @@ import { WelcomeSection } from './components/WelcomeSection';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { CardSelectionPage } from './components/CardSelectionPage';
+import { ThinkingPanel } from './components/ThinkingPanel';
+import type { ThinkingStep } from './components/ThinkingPanel';
 import { fetchCards, streamChat } from './api';
 import type { CardMenuItem, ChatHistoryItem } from './api';
 import type { ToolCall } from './components/ChatMessage';
 
 interface Message {
+  id: number;
   role: 'user' | 'assistant';
   content: string;
   toolCalls?: ToolCall[];
+  thinkingSteps?: ThinkingStep[];
+  thinkingDone?: boolean;
+  thinkingElapsed?: number;
+}
+
+function applyStepEvent(
+  steps: ThinkingStep[],
+  tool: string,
+  status: 'calling' | 'done',
+  label: string,
+  channel?: string,
+): ThinkingStep[] {
+  const next = [...steps];
+  if (status === 'done') {
+    let idx = -1;
+    for (let i = next.length - 1; i >= 0; i--) {
+      if (next[i].tool === tool && next[i].status === 'calling') {
+        if (!channel || next[i].label.includes(channel)) {
+          idx = i;
+          break;
+        }
+      }
+    }
+    if (idx !== -1) {
+      next[idx] = { tool, status: 'done', label };
+      return next;
+    }
+  }
+  return [...next, { tool, status, label }];
 }
 
 export default function App() {
@@ -22,12 +54,12 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
   const [allCards, setAllCards] = useState<CardMenuItem[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const idCounter = useRef(0);
 
-  // Fetch cards from API on mount
   useEffect(() => {
     fetchCards()
       .then(setAllCards)
@@ -35,7 +67,6 @@ export default function App() {
       .finally(() => setCardsLoading(false));
   }, []);
 
-  // Auto-scroll to bottom when new messages appear
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -46,18 +77,18 @@ export default function App() {
     setSelectedCards((prev) =>
       prev.includes(cardId)
         ? prev.filter((id) => id !== cardId)
-        : [...prev, cardId]
+        : [...prev, cardId],
     );
   };
 
   const handleScenarioClick = (scenario: string) => {
     const scenarioMap: Record<string, string> = {
-      '🍽️ 餐廳用餐': '在餐廳用餐 1500 元，該用哪張卡？',
-      '🏠  國內旅遊': '國內旅遊訂飯店 3000 元，推薦哪張卡？',
-      '🗾 日本旅遊': '我在日本旅遊刷卡 5000 元，該用哪張卡？',
-      '🛒  線上購物': '線上購物 2000 元，哪張卡回饋最高？',
-      '✈️ 訂房/機票': '訂機票 12000 元，推薦哪張卡？',
-      '🎬 娛樂消費': '看電影買票 800 元，該用哪張卡？',
+      '餐廳用餐': '在餐廳用餐 1500 元，該用哪張卡？',
+      '國內旅遊': '國內旅遊訂飯店 3000 元，推薦哪張卡？',
+      '日本旅遊': '我在日本旅遊刷卡 5000 元，該用哪張卡？',
+      '線上購物': '線上購物 2000 元，哪張卡回饋最高？',
+      '訂房/機票': '訂機票 12000 元，推薦哪張卡？',
+      '娛樂消費': '看電影買票 800 元，該用哪張卡？',
     };
     setInputValue(scenarioMap[scenario] || scenario);
   };
@@ -69,8 +100,8 @@ export default function App() {
   const selectedCardInfos = () =>
     selectedCards
       .map((id) => {
-        const c = allCards.find((x) => x.card_id === id);
-        return c ? { card_id: c.card_id, card_name: c.card_name } : null;
+        const card = allCards.find((x) => x.card_id === id);
+        return card ? { card_id: card.card_id, card_name: card.card_name } : null;
       })
       .filter((x): x is { card_id: string; card_name: string } => x !== null);
 
@@ -79,24 +110,47 @@ export default function App() {
 
   const handleSendMessage = async (message: string) => {
     if (selectedCards.length === 0) {
+      const userId = ++idCounter.current;
+      const assistantId = ++idCounter.current;
       setMessages((prev) => [
         ...prev,
-        { role: 'user', content: message },
-        { role: 'assistant', content: '請先在左側選擇您持有的信用卡，我才能為您推薦最適合的刷卡選擇。' },
+        { id: userId, role: 'user', content: message },
+        {
+          id: assistantId,
+          role: 'assistant',
+          content: '請先在左側選擇您持有的信用卡，我才能為您推薦最適合的刷卡選擇。',
+        },
       ]);
       return;
     }
 
     setShowWelcome(false);
-    const userMessage: Message = { role: 'user', content: message };
+
+    const userId = ++idCounter.current;
+    const assistantId = ++idCounter.current;
     const historyForServer = buildHistory();
 
-    setMessages((prev) => [...prev, userMessage, { role: 'assistant', content: '', toolCalls: [] }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: userId, role: 'user', content: message },
+      {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        toolCalls: [],
+        thinkingSteps: [],
+        thinkingDone: false,
+      },
+    ]);
     setIsLoading(true);
 
-    const assistantIndex = messages.length + 1;
+    const updateAssistant = (updater: (m: Message) => Message) => {
+      setMessages((prev) => prev.map((m) => (m.id === assistantId ? updater(m) : m)));
+    };
+
     let textBuffer = '';
     const toolCalls: ToolCall[] = [];
+    const startedAt = Date.now();
 
     try {
       await streamChat(
@@ -106,49 +160,55 @@ export default function App() {
         {
           onText: (delta) => {
             textBuffer += delta;
-            setMessages((prev) => {
-              const next = [...prev];
-              if (next[assistantIndex]) {
-                next[assistantIndex] = { ...next[assistantIndex], content: textBuffer };
-              }
-              return next;
-            });
+            updateAssistant((m) => ({ ...m, content: textBuffer }));
           },
           onToolUse: (evt) => {
             toolCalls.push({ name: evt.tool_name, input: evt.input });
-            setMessages((prev) => {
-              const next = [...prev];
-              if (next[assistantIndex]) {
-                next[assistantIndex] = { ...next[assistantIndex], toolCalls: [...toolCalls] };
-              }
-              return next;
-            });
+            updateAssistant((m) => ({
+              ...m,
+              toolCalls: [...toolCalls],
+              thinkingSteps: applyStepEvent(
+                m.thinkingSteps ?? [],
+                evt.tool_name,
+                'calling',
+                `正在呼叫 ${evt.tool_name}`,
+              ),
+            }));
+          },
+          onToolResult: (evt) => {
+            const lastToolName = toolCalls[toolCalls.length - 1]?.name ?? 'tool_result';
+            updateAssistant((m) => ({
+              ...m,
+              thinkingSteps: applyStepEvent(
+                m.thinkingSteps ?? [],
+                lastToolName,
+                'done',
+                evt.summary || '工具查詢完成',
+              ),
+            }));
+          },
+          onDone: () => {
+            updateAssistant((m) => ({
+              ...m,
+              thinkingDone: true,
+              thinkingElapsed: Math.round((Date.now() - startedAt) / 1000),
+            }));
           },
           onError: (msg) => {
-            setMessages((prev) => {
-              const next = [...prev];
-              if (next[assistantIndex]) {
-                next[assistantIndex] = {
-                  ...next[assistantIndex],
-                  content: `抱歉，發生錯誤：${msg}`,
-                };
-              }
-              return next;
-            });
+            updateAssistant((m) => ({
+              ...m,
+              content: `抱歉，發生錯誤：${msg}`,
+              thinkingDone: true,
+            }));
           },
         },
       );
-    } catch (err) {
-      setMessages((prev) => {
-        const next = [...prev];
-        if (next[assistantIndex]) {
-          next[assistantIndex] = {
-            ...next[assistantIndex],
-            content: '抱歉，無法連線到伺服器，請確認後端是否已啟動。',
-          };
-        }
-        return next;
-      });
+    } catch {
+      updateAssistant((m) => ({
+        ...m,
+        content: '抱歉，無法連線到伺服器，請確認後端是否已啟動。',
+        thinkingDone: true,
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -195,13 +255,45 @@ export default function App() {
 
               {messages.length > 0 && (
                 <div className="p-6 space-y-6">
-                  {messages.map((message, index) => (
-                    <ChatMessage
-                      key={index}
-                      role={message.role}
-                      content={message.content}
-                      toolCalls={message.toolCalls}
-                    />
+                  {messages.map((message) => (
+                    <div key={message.id}>
+                      {message.role === 'assistant' &&
+                        message.thinkingSteps &&
+                        message.thinkingSteps.length > 0 && (
+                          <div className="flex gap-3 mb-1">
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                              style={{ background: 'linear-gradient(135deg, #007C7C 0%, #005c5c 100%)' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 8V4H8" />
+                                <rect width="16" height="12" x="4" y="8" rx="2" />
+                                <path d="M2 14h2" />
+                                <path d="M20 14h2" />
+                                <path d="M15 13v2" />
+                                <path d="M9 13v2" />
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <ThinkingPanel
+                                steps={message.thinkingSteps}
+                                isDone={message.thinkingDone ?? false}
+                                elapsedSeconds={message.thinkingElapsed}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                      {(message.role === 'user' ||
+                        message.content ||
+                        (message.toolCalls && message.toolCalls.length > 0)) && (
+                        <ChatMessage
+                          role={message.role}
+                          content={message.content}
+                          toolCalls={message.toolCalls}
+                        />
+                      )}
+                    </div>
                   ))}
 
                   {isLoading && messages[messages.length - 1]?.content === '' && (
