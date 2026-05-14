@@ -7,18 +7,71 @@ import { ChatInput } from './components/ChatInput';
 import { CardSelectionPage } from './components/CardSelectionPage';
 import { ThinkingPanel } from './components/ThinkingPanel';
 import type { ThinkingStep } from './components/ThinkingPanel';
-import { fetchCards, streamChat } from './api';
-import type { CardMenuItem, ChatHistoryItem } from './api';
-import type { ToolCall } from './components/ChatMessage';
+import { fetchCards } from './api';
+import type { CardMenuItem, SearchResult } from './api';
+
+interface Recommendation {
+  cardId: string;
+  rank: number;
+  cardName: string;
+  channel: string;
+  rewardRate: string;
+  estimatedCashback: string;
+  monthlyCap: string;
+  expirationDate: string;
+  conditions: string[];
+  reason: string;
+  color: string;
+  badges?: string[];
+}
 
 interface Message {
   id: number;
   role: 'user' | 'assistant';
   content: string;
-  toolCalls?: ToolCall[];
+  recommendations?: Recommendation[];
   thinkingSteps?: ThinkingStep[];
   thinkingDone?: boolean;
   thinkingElapsed?: number;
+}
+
+const RANK_COLORS = [
+  'from-green-500 to-green-600',
+  'from-amber-500 to-amber-600',
+  'from-fuchsia-500 to-fuchsia-600',
+];
+
+function toRecommendation(result: SearchResult, rank: number, channel: string): Recommendation {
+  const rate = result.cashback_rate != null ? `${(result.cashback_rate * 100).toFixed(1)}%` : '—';
+  const estimated = result.estimated_cashback != null
+    ? `NT$ ${result.estimated_cashback.toLocaleString()}`
+    : '—';
+  const cap = result.max_cashback_per_period != null
+    ? `NT$ ${result.max_cashback_per_period.toLocaleString()}/期`
+    : '無上限';
+  const badges: string[] = [];
+  if (rank === 1) badges.push('最高回饋');
+  if (result.expiring_soon) badges.push('即將到期');
+  if (result.is_fallback) badges.push('一般消費回饋');
+
+  const conditions: string[] = [];
+  if (result.conditions) conditions.push(result.conditions);
+  if (result.cashback_description) conditions.push(result.cashback_description);
+
+  return {
+    cardId: result.card_id,
+    rank,
+    cardName: result.card_name,
+    channel,
+    rewardRate: `${rate} 回饋`,
+    estimatedCashback: estimated,
+    monthlyCap: cap,
+    expirationDate: result.valid_end ?? '長期有效',
+    conditions,
+    reason: result.reason || result.cashback_description || `此卡在「${channel}」通路的回饋率為 ${rate}。`,
+    color: RANK_COLORS[rank - 1] ?? RANK_COLORS[2],
+    badges: badges.length > 0 ? badges : undefined,
+  };
 }
 
 function applyStepEvent(
@@ -97,17 +150,6 @@ export default function App() {
     setInputValue(prompt);
   };
 
-  const selectedCardInfos = () =>
-    selectedCards
-      .map((id) => {
-        const card = allCards.find((x) => x.card_id === id);
-        return card ? { card_id: card.card_id, card_name: card.card_name } : null;
-      })
-      .filter((x): x is { card_id: string; card_name: string } => x !== null);
-
-  const buildHistory = (): ChatHistoryItem[] =>
-    messages.map((m) => ({ role: m.role, content: m.content }));
-
   const handleSendMessage = async (message: string) => {
     if (selectedCards.length === 0) {
       const userId = ++idCounter.current;
@@ -128,7 +170,6 @@ export default function App() {
 
     const userId = ++idCounter.current;
     const assistantId = ++idCounter.current;
-    const historyForServer = buildHistory();
 
     setMessages((prev) => [
       ...prev,
@@ -137,7 +178,6 @@ export default function App() {
         id: assistantId,
         role: 'assistant',
         content: '',
-        toolCalls: [],
         thinkingSteps: [],
         thinkingDone: false,
       },
@@ -148,61 +188,101 @@ export default function App() {
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? updater(m) : m)));
     };
 
-    let textBuffer = '';
-    const toolCalls: ToolCall[] = [];
-    const startedAt = Date.now();
-
     try {
-      await streamChat(
-        message,
-        selectedCardInfos(),
-        historyForServer,
-        {
-          onText: (delta) => {
-            textBuffer += delta;
-            updateAssistant((m) => ({ ...m, content: textBuffer }));
-          },
-          onToolUse: (evt) => {
-            toolCalls.push({ name: evt.tool_name, input: evt.input });
-            updateAssistant((m) => ({
-              ...m,
-              toolCalls: [...toolCalls],
-              thinkingSteps: applyStepEvent(
-                m.thinkingSteps ?? [],
-                evt.tool_name,
-                'calling',
-                `正在呼叫 ${evt.tool_name}`,
-              ),
-            }));
-          },
-          onToolResult: (evt) => {
-            const lastToolName = toolCalls[toolCalls.length - 1]?.name ?? 'tool_result';
-            updateAssistant((m) => ({
-              ...m,
-              thinkingSteps: applyStepEvent(
-                m.thinkingSteps ?? [],
-                lastToolName,
-                'done',
-                evt.summary || '工具查詢完成',
-              ),
-            }));
-          },
-          onDone: () => {
-            updateAssistant((m) => ({
-              ...m,
-              thinkingDone: true,
-              thinkingElapsed: Math.round((Date.now() - startedAt) / 1000),
-            }));
-          },
-          onError: (msg) => {
-            updateAssistant((m) => ({
-              ...m,
-              content: `抱歉，發生錯誤：${msg}`,
-              thinkingDone: true,
-            }));
-          },
-        },
-      );
+      const response = await fetch('/api/recommend/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: message, cards_owned: selectedCards }),
+      });
+
+      if (!response.ok || !response.body) {
+        updateAssistant((m) => ({
+          ...m,
+          content: `抱歉，發生錯誤：HTTP ${response.status}`,
+          thinkingDone: true,
+        }));
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const chunks = buffer.split('\n\n');
+        buffer = chunks.pop() ?? '';
+
+        for (const chunk of chunks) {
+          const dataLine = chunk.split('\n').find((line) => line.startsWith('data:'));
+          if (!dataLine) continue;
+
+          try {
+            const event = JSON.parse(dataLine.replace(/^data:\s*/, ''));
+
+            if (event.type === 'tool_call') {
+              updateAssistant((m) => ({
+                ...m,
+                thinkingSteps: applyStepEvent(
+                  m.thinkingSteps ?? [],
+                  event.tool,
+                  event.status,
+                  event.label,
+                  event.channel,
+                ),
+              }));
+            } else if (event.type === 'thinking_done') {
+              updateAssistant((m) => ({
+                ...m,
+                thinkingDone: true,
+                thinkingElapsed: event.elapsed_seconds,
+              }));
+            } else if (event.type === 'result') {
+              const data = event.data;
+              if (data.off_topic_message) {
+                updateAssistant((m) => ({ ...m, content: data.off_topic_message }));
+              } else if (data.error) {
+                updateAssistant((m) => ({ ...m, content: `抱歉，查詢時發生錯誤：${data.error}` }));
+              } else {
+                const maxCards = 4;
+                const recommendations: Recommendation[] = [];
+
+                for (const rec of data.recommendations ?? []) {
+                  for (const option of rec.best_options ?? []) {
+                    if (recommendations.length >= maxCards) break;
+                    recommendations.push(
+                      toRecommendation(option, recommendations.length + 1, rec.channel_name),
+                    );
+                  }
+                  if (recommendations.length >= maxCards) break;
+                }
+
+                const channelNames = (data.recommendations ?? [])
+                  .map((rec: { channel_name: string }) => rec.channel_name)
+                  .join('、');
+                const amount = data.parsed?.amount ?? 0;
+                const amountText = amount > 0
+                  ? `，消費 NT$ ${amount.toLocaleString()} 元`
+                  : '';
+                const summary = recommendations.length > 0
+                  ? `系統識別出通路：${channelNames}${amountText}。以下是最佳付款選項：`
+                  : '目前沒有找到符合條件的推薦卡片。';
+
+                updateAssistant((m) => ({
+                  ...m,
+                  content: summary,
+                  recommendations,
+                }));
+              }
+            }
+          } catch {
+            // Ignore malformed SSE events.
+          }
+        }
+      }
     } catch {
       updateAssistant((m) => ({
         ...m,
@@ -286,11 +366,11 @@ export default function App() {
 
                       {(message.role === 'user' ||
                         message.content ||
-                        (message.toolCalls && message.toolCalls.length > 0)) && (
+                        (message.recommendations && message.recommendations.length > 0)) && (
                         <ChatMessage
                           role={message.role}
                           content={message.content}
-                          toolCalls={message.toolCalls}
+                          recommendations={message.recommendations}
                         />
                       )}
                     </div>
