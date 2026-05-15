@@ -16,6 +16,8 @@ interface ThinkingPanelProps {
 const TOOL_LABELS: Record<string, string> = {
   parse_scenario:    '情境解析',
   search_by_channel: '通路查詢',
+  get_card_details:  '卡片詳情',
+  get_promotions:    '優惠活動',
   generate_reasons:  '理由生成',
 };
 

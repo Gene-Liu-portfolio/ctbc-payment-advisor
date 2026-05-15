@@ -57,6 +57,12 @@ function toRecommendation(result: SearchResult, rank: number, channel: string): 
   const conditions: string[] = [];
   if (result.conditions) conditions.push(result.conditions);
   if (result.cashback_description) conditions.push(result.cashback_description);
+  for (const highlight of result.detail_highlights ?? []) {
+    if (highlight && !conditions.includes(highlight)) conditions.push(highlight);
+  }
+  for (const alert of result.promotion_alerts ?? []) {
+    if (alert && !conditions.includes(alert)) conditions.push(`活動提醒：${alert}`);
+  }
 
   return {
     cardId: result.card_id,
