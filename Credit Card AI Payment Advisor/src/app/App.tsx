@@ -271,7 +271,7 @@ export default function App() {
                   .join('、');
                 const amount = data.parsed?.amount ?? 0;
                 const amountText = amount > 0
-                  ? `，消費 NT$ ${amount.toLocaleString()} 元`
+                  ? `，消費 ${data.amount_info?.amount_display ?? `NT$ ${amount.toLocaleString()} 元`}`
                   : '';
                 const summary = recommendations.length > 0
                   ? `系統識別出通路：${channelNames}${amountText}。以下是最佳付款選項：`

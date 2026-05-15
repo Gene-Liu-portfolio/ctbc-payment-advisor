@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 
 import uvicorn
@@ -47,6 +48,8 @@ from .tools.search import search_by_channel as _search_by_channel
 from .utils.channel_mapper import MERCHANT_TO_CHANNEL, normalize_merchant
 from .utils.data_loader import get_cards_menu, get_data_summary
 from .utils.llm_parser import parse_scenario
+
+DEFAULT_JPY_TWD_RATE = float(os.getenv("JPY_TWD_RATE", "0.22"))
 
 
 # ── Public routes ────────────────────────────────────────────────────────────
@@ -71,6 +74,67 @@ async def health(_: Request):
 
 def _json(data: dict, status: int = 200) -> JSONResponse:
     return JSONResponse(data, status_code=status)
+
+
+def _extract_amount_fallback(text: str) -> dict:
+    """Extract an amount for recommendation math; foreign currency is converted to TWD."""
+    patterns = [
+        (pattern, "JPY", DEFAULT_JPY_TWD_RATE)
+        for pattern in [
+            r"(?:JPY|日圓|日元|円)\s*([\d,]+)",
+            r"([\d,]+)\s*(?:JPY|日圓|日元|円)",
+        ]
+    ]
+    patterns.extend([
+        (pattern, "TWD", 1.0)
+        for pattern in [
+            r"(?:NT\$|新台幣|台幣|TWD)\s*([\d,]+)",
+            r"(?:花(?:了|費)?|消費|共|約|大概)\s*([\d,]+)\s*(?:元|塊)",
+            r"([\d,]+)\s*(?:元|塊)",
+        ]
+    ])
+
+    candidates = []
+    for pattern, currency, rate in patterns:
+        for match in re.finditer(pattern, text, flags=re.I):
+            raw = match.group(1).replace(",", "")
+            try:
+                original_amount = float(raw)
+            except ValueError:
+                continue
+            if not 1 <= original_amount <= 10_000_000:
+                continue
+            twd_amount = original_amount * rate
+            candidates.append({
+                "amount": twd_amount,
+                "original_amount": original_amount,
+                "currency": currency,
+                "exchange_rate": rate,
+                "amount_display": (
+                    f"{int(original_amount):,} 日圓，約 NT$ {int(round(twd_amount)):,}"
+                    if currency == "JPY"
+                    else f"NT$ {int(original_amount):,}"
+                ),
+            })
+
+    if not candidates:
+        return {
+            "amount": 0.0,
+            "original_amount": 0.0,
+            "currency": "TWD",
+            "exchange_rate": 1.0,
+            "amount_display": "未指定",
+        }
+    return max(candidates, key=lambda item: item["amount"])
+
+
+def _fallback_channels(text: str) -> list[dict]:
+    """Minimal deterministic channel fallback when LLM parsing is unavailable."""
+    if re.search(r"日本|東京|大阪|京都|海外|國外|境外|日圓|日元|円|JPY", text, flags=re.I):
+        merchant_match = re.search(r"(?:在|到)(?:東京|大阪|京都|日本)?(?:的)?([^\s，,。]+?)(?:吃|買|消費|刷|花)", text)
+        merchant = merchant_match.group(1) if merchant_match else "海外消費"
+        return [{"name": merchant, "channel_id": "overseas_general"}]
+    return [{"name": "一般消費", "channel_id": "general"}]
 
 
 async def api_cards(_: Request):
@@ -152,6 +216,7 @@ async def api_recommend_stream(request: Request):
         llm_parsed = parse_scenario(scenario)
         parsed_channels = []
         amount = 0.0
+        amount_info = _extract_amount_fallback(scenario)
 
         if llm_parsed is not None and not llm_parsed.get("is_consumption_scenario", True):
             yield sse({
@@ -186,25 +251,24 @@ async def api_recommend_stream(request: Request):
                     "channel_id": cid,
                 })
         else:
-            import re
+            amount = amount_info["amount"]
+            parsed_channels = _fallback_channels(scenario)
 
-            amount_pattern = re.compile(
-                r"(?:NT\$|新台幣|花(?:了|費)?|消費|共|約|大概)?\s*([\d,]+)\s*(?:元|塊|円)?"
-            )
-            candidates = []
-            for match in amount_pattern.finditer(scenario):
-                raw = match.group(1).replace(",", "")
-                try:
-                    val = float(raw)
-                    if 1 <= val <= 10_000_000:
-                        candidates.append(val)
-                except ValueError:
-                    pass
-            amount = max(candidates) if candidates else 0.0
-            parsed_channels = [{"name": "一般消費", "channel_id": "general"}]
+        if amount_info["currency"] != "TWD" and amount_info["amount"] > 0:
+            amount = amount_info["amount"]
+        elif amount <= 0 and amount_info["amount"] > 0:
+            amount = amount_info["amount"]
+        elif amount > 0 and amount_info["amount"] <= 0:
+            amount_info = {
+                "amount": amount,
+                "original_amount": amount,
+                "currency": "TWD",
+                "exchange_rate": 1.0,
+                "amount_display": f"NT$ {int(amount):,}",
+            }
 
         channels_display = [ch["name"] for ch in parsed_channels]
-        amount_label = f"NT$ {int(amount)}" if amount else "未指定"
+        amount_label = amount_info["amount_display"] if amount else "未指定"
         yield sse({
             "type": "tool_call",
             "tool": "parse_scenario",
@@ -385,6 +449,7 @@ async def api_recommend_stream(request: Request):
             "data": {
                 "scenario": scenario,
                 "parsed": {"channels": parsed_channels, "amount": amount},
+                "amount_info": amount_info,
                 "recommendations": recommendations,
                 "error": None,
             },

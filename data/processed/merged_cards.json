@@ -1,12 +1,12 @@
 {
   "version": "2.0",
   "description": "合併自 ctbc_cards + fubon_cards + card_features + microsite_deals",
-  "last_updated": "2026-05-02",
+  "last_updated": "2026-05-15",
   "merge_sources": {
-    "ctbc_cards": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/processed/ctbc_cards.json",
-    "fubon_cards": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/processed/fubon_cards.json",
-    "card_features": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/scraped/card_features.json",
-    "microsite_deals": "/Users/liumeow/Documents/CTBC_Internship/ctbc-payment-advisor/data/scraped/microsite_deals.json"
+    "ctbc_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/ctbc_cards.json",
+    "fubon_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/fubon_cards.json",
+    "card_features": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/scraped/card_features.json",
+    "microsite_deals": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/scraped/microsite_deals.json"
   },
   "cards": [
     {
@@ -137,10 +137,10 @@
         },
         {
           "channel_id": "overseas_general",
-          "cashback_rate": 0.08,
+          "cashback_rate": 0.11,
           "cashback_type": "cash",
-          "cashback_description": "國外實體商店消費再加碼8%",
-          "conditions": "",
+          "cashback_description": "國外實體商店最高11% OPENPOINT（基本3% + 指定地區/活動加碼8%）",
+          "conditions": "⚠️ 最高 11% 為國外實體商店消費基本 3% + 指定地區/活動加碼 8%。加碼通常需登入中信銀行 APP 領券並連結 uniopen 會員，且加碼回饋有每月上限；網路交易、條碼支付或第三方支付不適用國外實體商店加碼。",
           "valid_end": null,
           "data_source": "card_feature_direct"
         },

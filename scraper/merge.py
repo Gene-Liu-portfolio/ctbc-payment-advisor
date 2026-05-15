@@ -31,6 +31,11 @@ _CONDITION_WARNINGS: dict[tuple[str, str], str] = {
         "⚠️ 最高 11% 需同時達成：①基本消費 1% + ②綁定 icash Pay 加碼 4% + "
         "③指定統一集團多品牌消費加碼回饋，一般刷卡消費僅有基本回饋約 1–3%。"
     ),
+    ("ctbc_c_uniopen", "overseas_general"): (
+        "⚠️ 最高 11% 為國外實體商店消費基本 3% + 指定地區/活動加碼 8%。"
+        "加碼通常需登入中信銀行 APP 領券並連結 uniopen 會員，且加碼回饋有每月上限；"
+        "網路交易、條碼支付或第三方支付不適用國外實體商店加碼。"
+    ),
     ("ctbc_c_linepay", "general"): (
         "⚠️ 最高 16% 為特定通路（如指定電商、外送平台）的回饋上限，"
         "非所有通路皆適用此比率，實際回饋依消費通路而異，請確認通路專屬回饋。"
@@ -47,6 +52,23 @@ _CONDITION_WARNINGS: dict[tuple[str, str], str] = {
         "館外一般消費不適用加碼，且加碼回饋設有每月上限。"
     ),
 }
+
+
+_CHANNEL_OVERRIDES: dict[tuple[str, str], dict] = {
+    ("ctbc_c_uniopen", "overseas_general"): {
+        "cashback_rate": 0.11,
+        "cashback_description": "國外實體商店最高11% OPENPOINT（基本3% + 指定地區/活動加碼8%）",
+    },
+}
+
+
+def _apply_channel_overrides(card_id: str, channels: list[dict]) -> list[dict]:
+    """Apply manual corrections for cases where scraped marketing snippets are partial rates."""
+    for ch in channels:
+        key = (card_id, ch.get("channel_id", ""))
+        if key in _CHANNEL_OVERRIDES:
+            ch.update(_CHANNEL_OVERRIDES[key])
+    return channels
 
 
 def _apply_condition_warnings(card_id: str, channels: list[dict]) -> list[dict]:
@@ -164,6 +186,9 @@ def merge() -> dict:
                 {**ch, "data_source": ch.get("data_source", "api")}
                 for ch in card.get("channels", [])
             ])
+
+        # 修正部分爬蟲文案只抓到「加碼」而非總回饋率的通路資料
+        merged["channels"] = _apply_channel_overrides(card_id, merged["channels"])
 
         # 補充「最高回饋」達成條件說明（避免 Agent 誤以為無條件適用）
         merged["channels"] = _apply_condition_warnings(card_id, merged["channels"])
