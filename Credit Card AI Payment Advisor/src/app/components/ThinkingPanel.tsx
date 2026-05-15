@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, CheckCircle2, Wrench } from 'lucide-react';
 
 export interface ThinkingStep {
   tool: string;
@@ -19,6 +19,16 @@ const TOOL_LABELS: Record<string, string> = {
   generate_reasons:  '理由生成',
 };
 
+const MCP_TOOL_NAMES = new Set([
+  'search_by_channel',
+  'recommend_payment',
+  'compare_cards',
+  'get_promotions',
+  'get_card_details',
+  'list_all_cards',
+  'reload_data',
+]);
+
 export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -31,6 +41,9 @@ export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelPr
   }, [isDone]);
 
   const doneCount = steps.filter((s) => s.status === 'done').length;
+  const mcpTools = Array.from(
+    new Set(steps.map((step) => step.tool).filter((tool) => MCP_TOOL_NAMES.has(tool))),
+  );
 
   return (
     <div
@@ -60,7 +73,30 @@ export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelPr
 
       {/* Steps */}
       {!isCollapsed && steps.length > 0 && (
-        <div className="px-3 pb-2.5 space-y-1">
+        <div className="px-3 pb-2.5 space-y-2">
+          {mcpTools.length > 0 && (
+            <div className="rounded-lg border px-2.5 py-2 bg-white/70" style={{ borderColor: '#007C7C22' }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Wrench size={11} className="flex-shrink-0" style={{ color: '#007C7C' }} />
+                <span className="text-[11px] font-medium" style={{ color: '#0F766E' }}>
+                  本情境調用的 MCP 工具
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {mcpTools.map((tool) => (
+                  <span
+                    key={tool}
+                    className="text-[11px] font-mono rounded-full px-2 py-0.5"
+                    style={{ backgroundColor: '#E6F4F1', color: '#0F766E' }}
+                  >
+                    {tool}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1">
           {steps.map((step, i) => (
             <div key={i} className="flex items-center gap-1.5">
               {step.status === 'calling' ? (
@@ -79,6 +115,7 @@ export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelPr
               </span>
             </div>
           ))}
+          </div>
         </div>
       )}
     </div>
