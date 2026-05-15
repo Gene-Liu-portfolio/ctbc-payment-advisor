@@ -33,6 +33,8 @@ export interface SearchResult {
   merchant?: string;
   payment_method?: string;
   reason?: string;
+  detail_highlights?: string[];
+  promotion_alerts?: string[];
 }
 
 /** Claude messages 格式（user/assistant），content 為純文字。 */

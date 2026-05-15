@@ -264,6 +264,96 @@ async def api_recommend_stream(request: Request):
                 })
 
         if recommendations:
+            unique_card_ids = []
+            for rec in recommendations:
+                for result in rec["best_options"]:
+                    card_id = result.get("card_id")
+                    if card_id and card_id not in unique_card_ids:
+                        unique_card_ids.append(card_id)
+                    if len(unique_card_ids) >= 4:
+                        break
+                if len(unique_card_ids) >= 4:
+                    break
+
+            yield sse({
+                "type": "tool_call",
+                "tool": "get_card_details",
+                "status": "calling",
+                "label": f"查詢 {len(unique_card_ids)} 張候選卡片的限制條件...",
+            })
+            card_details = {
+                card_id: _get_card_details(card_id)
+                for card_id in unique_card_ids
+            }
+            for rec in recommendations:
+                channel_id = rec["channel_id"]
+                for result in rec["best_options"]:
+                    detail = card_details.get(result.get("card_id"), {})
+                    matching_channels = [
+                        channel
+                        for channel in detail.get("channels", [])
+                        if channel.get("channel_id") == channel_id
+                    ]
+                    highlights = []
+                    for channel in matching_channels[:2]:
+                        description = channel.get("cashback_description")
+                        conditions = channel.get("conditions")
+                        valid_end = channel.get("valid_end")
+                        if description and description not in highlights:
+                            highlights.append(description)
+                        if conditions and conditions not in highlights:
+                            highlights.append(conditions)
+                        if valid_end:
+                            highlights.append(f"有效期限：{valid_end}")
+                    if highlights:
+                        result["detail_highlights"] = highlights[:3]
+            yield sse({
+                "type": "tool_call",
+                "tool": "get_card_details",
+                "status": "done",
+                "label": "候選卡片限制條件已補充",
+            })
+
+            yield sse({
+                "type": "tool_call",
+                "tool": "get_promotions",
+                "status": "calling",
+                "label": "查詢相關通路優惠活動...",
+            })
+            promotions_by_channel = {
+                rec["channel_id"]: _get_promotions(
+                    cards_owned=cards_owned,
+                    category=rec["channel_id"],
+                )
+                for rec in recommendations
+            }
+            for rec in recommendations:
+                promo_result = promotions_by_channel.get(rec["channel_id"], {})
+                promo_alerts = [
+                    promo["title"]
+                    for promo in promo_result.get("promotions", [])[:2]
+                    if promo.get("title")
+                ]
+                expiring_alerts = [
+                    f"{item['card_name']}：{channel['channel_name']}優惠即將到期"
+                    for item in promo_result.get("card_channels", [])[:2]
+                    for channel in item.get("channels", [])[:1]
+                ]
+                alerts = [*promo_alerts, *expiring_alerts][:3]
+                if alerts:
+                    for result in rec["best_options"]:
+                        result["promotion_alerts"] = alerts
+            total_promos = sum(
+                len(result.get("promotions", []))
+                for result in promotions_by_channel.values()
+            )
+            yield sse({
+                "type": "tool_call",
+                "tool": "get_promotions",
+                "status": "done",
+                "label": f"已查詢相關活動，共找到 {total_promos} 筆通路優惠",
+            })
+
             yield sse({
                 "type": "tool_call",
                 "tool": "generate_reasons",
