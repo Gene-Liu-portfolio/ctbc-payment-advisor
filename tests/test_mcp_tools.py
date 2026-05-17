@@ -21,7 +21,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # ── 被測模組 ───────────────────────────────────────────────────────────────
-from mcp_server.tools.search import search_by_channel
+from mcp_server.tools.search import _build_calculation_trace, search_by_channel
 from mcp_server.tools.recommend import recommend_payment, _extract_amount, _extract_channels
 from mcp_server.tools.compare import compare_cards
 from mcp_server.tools.promotions import get_promotions, get_card_details
@@ -262,10 +262,47 @@ class TestSearchByChannel:
         result = search_by_channel("餐飲", cards_owned=COMBO_5, amount=1000)
         assert result["error"] is None
         required = {"card_id", "card_name", "cashback_rate", "cashback_type",
-                     "estimated_cashback", "rank", "data_source"}
+                     "estimated_cashback", "rank", "data_source", "calculation_trace"}
         for r in result["results"]:
             missing = required - set(r.keys())
             assert not missing, f"缺少欄位: {missing}"
+
+    def test_calculation_trace_basic_formula(self):
+        result = search_by_channel("家樂福", cards_owned=["ctbc_c_linepay"], amount=2000)
+        trace = result["results"][0]["calculation_trace"]
+
+        assert trace["amount"] == 2000
+        assert trace["cashback_rate"] == 0.05
+        assert trace["formula"] == "2000 × 5% = 100"
+        assert trace["raw_cashback"] == 100
+        assert trace["cap"] is None
+        assert trace["cap_applied"] is False
+        assert trace["final_cashback"] == 100
+
+    def test_calculation_trace_with_cap(self):
+        trace = _build_calculation_trace(
+            amount=10000,
+            cashback_rate=0.05,
+            cap=300,
+            estimated_cashback=300,
+        )
+
+        assert trace["formula"] == "min(10000 × 5%, 300) = 300"
+        assert trace["raw_cashback"] == 500
+        assert trace["cap_applied"] is True
+        assert trace["final_cashback"] == 300
+
+    def test_calculation_trace_amount_zero(self):
+        trace = _build_calculation_trace(
+            amount=0,
+            cashback_rate=0.05,
+            cap=None,
+            estimated_cashback=None,
+        )
+
+        assert trace["formula"] == "未計算預估回饋"
+        assert trace["raw_cashback"] is None
+        assert trace["final_cashback"] is None
 
     def test_fallback_general(self):
         """查一個沒有卡有資料的通路，應 fallback 到 general"""

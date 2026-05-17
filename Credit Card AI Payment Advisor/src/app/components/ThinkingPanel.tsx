@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Loader2, CheckCircle2, Wrench } from 'lucide-react';
 
+export interface CalculationCandidate {
+  card_name: string;
+  formula: string;
+  estimated_cashback: number | null;
+}
+
 export interface ThinkingStep {
   tool: string;
   status: 'calling' | 'done';
   label: string;
+  kind?: 'step' | 'calculation';
+  channel?: string;
+  candidates?: CalculationCandidate[];
+  winner?: CalculationCandidate | null;
+  rankingSummary?: string;
 }
 
 interface ThinkingPanelProps {
@@ -19,6 +30,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_card_details:  '卡片詳情',
   get_promotions:    '優惠活動',
   generate_reasons:  '理由生成',
+  mcp_calculation:   'MCP 完成計算',
 };
 
 const MCP_TOOL_NAMES = new Set([
@@ -65,8 +77,8 @@ export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelPr
         )}
         <span className="text-xs font-medium flex-1">
           {isDone
-            ? `思考完成（${elapsedSeconds}s）`
-            : `思考中... ${doneCount}/${steps.length} 步驟`}
+            ? `工具執行完成（${elapsedSeconds}s）`
+            : `工具執行中... ${doneCount}/${steps.length} 步驟`}
         </span>
         {isCollapsed
           ? <ChevronRight size={12} className="flex-shrink-0" />
@@ -100,21 +112,42 @@ export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelPr
 
           <div className="space-y-1">
           {steps.map((step, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              {step.status === 'calling' ? (
-                <Loader2 size={11} className="flex-shrink-0 animate-spin" style={{ color: '#007C7C' }} />
-              ) : (
-                <CheckCircle2 size={11} className="flex-shrink-0" style={{ color: '#22c55e' }} />
-              )}
-              <span
-                className="text-xs leading-relaxed"
-                style={{ color: step.status === 'done' ? '#374151' : '#007C7C' }}
-              >
-                <span className="font-medium mr-1" style={{ color: '#6B7280' }}>
-                  [{TOOL_LABELS[step.tool] ?? step.tool}]
-                </span>
-                {step.label}
-              </span>
+            <div key={i} className="flex items-start gap-1.5">
+              <div className="pt-0.5">
+                {step.status === 'calling' ? (
+                  <Loader2 size={11} className="flex-shrink-0 animate-spin" style={{ color: '#007C7C' }} />
+                ) : (
+                  <CheckCircle2 size={11} className="flex-shrink-0" style={{ color: '#22c55e' }} />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div
+                  className="text-xs leading-relaxed"
+                  style={{ color: step.status === 'done' ? '#374151' : '#007C7C' }}
+                >
+                  <span className="font-medium mr-1" style={{ color: '#6B7280' }}>
+                    [{TOOL_LABELS[step.tool] ?? step.tool}]
+                  </span>
+                  {step.label}
+                </div>
+                {step.kind === 'calculation' && step.candidates && step.candidates.length > 0 && (
+                  <div className="mt-1 rounded-md border bg-white px-2 py-1.5" style={{ borderColor: '#007C7C1f' }}>
+                    <div className="space-y-0.5">
+                      {step.candidates.slice(0, 4).map((candidate) => (
+                        <div key={`${step.channel}-${candidate.card_name}`} className="flex justify-between gap-3 text-[11px] leading-relaxed">
+                          <span className="truncate" style={{ color: '#374151' }}>{candidate.card_name}</span>
+                          <span className="font-mono text-right flex-shrink-0" style={{ color: '#0F766E' }}>{candidate.formula}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {step.rankingSummary && (
+                      <div className="mt-1 border-t pt-1 text-[11px]" style={{ borderColor: '#007C7C1f', color: '#6B7280' }}>
+                        依預估回饋排序：{step.rankingSummary}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
           </div>

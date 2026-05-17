@@ -76,6 +76,12 @@ def _json(data: dict, status: int = 200) -> JSONResponse:
     return JSONResponse(data, status_code=status)
 
 
+def _format_cashback_value(value) -> str:
+    if value is None:
+        return "未計算"
+    return f"{float(value):g}"
+
+
 def _extract_amount_fallback(text: str) -> dict:
     """Extract an amount for recommendation math; foreign currency is converted to TWD."""
     patterns = [
@@ -203,6 +209,37 @@ async def api_recommend_stream(request: Request):
         def sse(data: dict) -> str:
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
+        def calculation_event(channel_name: str, result: dict) -> dict:
+            candidates = []
+            for item in result.get("results", [])[:4]:
+                trace = item.get("calculation_trace") or {}
+                candidates.append({
+                    "card_id": item.get("card_id"),
+                    "card_name": item.get("card_name"),
+                    "cashback_rate": item.get("cashback_rate"),
+                    "estimated_cashback": item.get("estimated_cashback"),
+                    "formula": trace.get("formula", "未計算預估回饋"),
+                    "data_source": item.get("data_source"),
+                    "is_fallback": item.get("is_fallback", False),
+                })
+
+            winner = candidates[0] if candidates else None
+            ranking_summary = "無候選卡"
+            if candidates:
+                ranking_summary = " > ".join(
+                    f"{item['card_name']} {_format_cashback_value(item.get('estimated_cashback'))}"
+                    for item in candidates
+                )
+
+            return {
+                "type": "mcp_calculation",
+                "tool": "search_by_channel",
+                "channel": channel_name,
+                "candidates": candidates,
+                "winner": winner,
+                "ranking_summary": ranking_summary,
+            }
+
         start_time = time.time()
         yield sse({"type": "thinking_start"})
 
@@ -303,6 +340,7 @@ async def api_recommend_stream(request: Request):
             )
 
             if result.get("results"):
+                yield sse(calculation_event(channel_name, result))
                 top_card = result["results"][0]["card_name"]
                 yield sse({
                     "type": "tool_call",
@@ -318,6 +356,7 @@ async def api_recommend_stream(request: Request):
                     "best_options": result["results"],
                 })
             else:
+                yield sse(calculation_event(channel_name, result))
                 yield sse({
                     "type": "tool_call",
                     "tool": "search_by_channel",

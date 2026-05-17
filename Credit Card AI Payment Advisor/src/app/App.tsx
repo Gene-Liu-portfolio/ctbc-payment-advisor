@@ -6,7 +6,7 @@ import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { CardSelectionPage } from './components/CardSelectionPage';
 import { ThinkingPanel } from './components/ThinkingPanel';
-import type { ThinkingStep } from './components/ThinkingPanel';
+import type { CalculationCandidate, ThinkingStep } from './components/ThinkingPanel';
 import { AgentThinkingPanel } from './components/AgentThinkingPanel';
 import type { AgentEvent } from './components/AgentThinkingPanel';
 import { fetchCards, streamChat } from './api';
@@ -107,6 +107,28 @@ function applyStepEvent(
     }
   }
   return [...next, { tool, status, label }];
+}
+
+function applyCalculationEvent(
+  steps: ThinkingStep[],
+  channel: string,
+  candidates: CalculationCandidate[],
+  winner: CalculationCandidate | null,
+  rankingSummary: string,
+): ThinkingStep[] {
+  return [
+    ...steps,
+    {
+      tool: 'mcp_calculation',
+      status: 'done',
+      kind: 'calculation',
+      channel,
+      candidates,
+      winner,
+      rankingSummary,
+      label: `MCP 完成「${channel}」候選卡計算`,
+    },
+  ];
 }
 
 export default function App() {
@@ -340,6 +362,17 @@ export default function App() {
                 ...m,
                 thinkingDone: true,
                 thinkingElapsed: event.elapsed_seconds,
+              }));
+            } else if (event.type === 'mcp_calculation') {
+              updateAssistant((m) => ({
+                ...m,
+                thinkingSteps: applyCalculationEvent(
+                  m.thinkingSteps ?? [],
+                  event.channel,
+                  event.candidates ?? [],
+                  event.winner ?? null,
+                  event.ranking_summary ?? '',
+                ),
               }));
             } else if (event.type === 'result') {
               const data = event.data;

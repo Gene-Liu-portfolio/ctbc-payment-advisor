@@ -11,8 +11,6 @@ Tool 1：search_by_channel
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ..utils.calculator import calc_estimated_cashback, is_expiring_soon
 from ..utils.data_loader import (
     get_best_channel_for_card,
@@ -96,6 +94,7 @@ def search_by_channel(
                 "payment_method":       deal.get("payment_method", ""),
                 "data_source":          "microsite",
                 "is_fallback":          False,
+                "calculation_trace":    _build_calculation_trace(amount, rate, cap, est),
             })
             continue
 
@@ -121,6 +120,7 @@ def search_by_channel(
             "conditions":           best_ch.get("conditions", ""),
             "data_source":          best_ch.get("data_source", "api"),
             "is_fallback":          best_ch.get("is_fallback", False),
+            "calculation_trace":    _build_calculation_trace(amount, rate, cap, est),
         })
 
     # 排序：預估回饋↓ → 回饋率↓
@@ -187,6 +187,51 @@ _CHANNEL_NAMES = {
 
 def _channel_display_name(channel_id: str, fallback: str) -> str:
     return _CHANNEL_NAMES.get(channel_id, fallback)
+
+
+def _format_amount(value: float | int | None) -> str:
+    if value is None:
+        return "0"
+    numeric = float(value)
+    return f"{numeric:g}"
+
+
+def _format_rate(rate: float | None) -> str:
+    if rate is None:
+        return "N/A"
+    return f"{rate * 100:g}%"
+
+
+def _build_calculation_trace(
+    amount: float,
+    cashback_rate: float | None,
+    cap: int | float | None,
+    estimated_cashback: float | None,
+) -> dict:
+    raw_cashback = None
+    cap_applied = False
+    formula = "未計算預估回饋"
+
+    if amount > 0 and cashback_rate and cashback_rate > 0:
+        raw_cashback = round(amount * cashback_rate, 1)
+        amount_text = _format_amount(amount)
+        rate_text = _format_rate(cashback_rate)
+        if cap is not None:
+            cap_value = float(cap)
+            cap_applied = raw_cashback > cap_value
+            formula = f"min({amount_text} × {rate_text}, {cap_value:g}) = {_format_amount(estimated_cashback)}"
+        else:
+            formula = f"{amount_text} × {rate_text} = {_format_amount(estimated_cashback)}"
+
+    return {
+        "amount": amount,
+        "cashback_rate": cashback_rate,
+        "formula": formula,
+        "raw_cashback": raw_cashback,
+        "cap": cap,
+        "cap_applied": cap_applied,
+        "final_cashback": estimated_cashback,
+    }
 
 
 def _error(msg: str) -> dict:
