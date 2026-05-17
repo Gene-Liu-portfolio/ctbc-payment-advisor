@@ -7,8 +7,10 @@ import { ChatInput } from './components/ChatInput';
 import { CardSelectionPage } from './components/CardSelectionPage';
 import { ThinkingPanel } from './components/ThinkingPanel';
 import type { ThinkingStep } from './components/ThinkingPanel';
-import { fetchCards } from './api';
-import type { CardMenuItem, SearchResult } from './api';
+import { AgentThinkingPanel } from './components/AgentThinkingPanel';
+import type { AgentEvent } from './components/AgentThinkingPanel';
+import { fetchCards, streamChat } from './api';
+import type { CardMenuItem, ChatHistoryItem, SearchResult } from './api';
 
 interface Recommendation {
   cardId: string;
@@ -33,6 +35,7 @@ interface Message {
   thinkingSteps?: ThinkingStep[];
   thinkingDone?: boolean;
   thinkingElapsed?: number;
+  agentEvents?: AgentEvent[];
 }
 
 const RANK_COLORS = [
@@ -116,6 +119,7 @@ export default function App() {
   const [allCards, setAllCards] = useState<CardMenuItem[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [agentMode, setAgentMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(0);
 
@@ -176,23 +180,114 @@ export default function App() {
 
     const userId = ++idCounter.current;
     const assistantId = ++idCounter.current;
+    const startedAt = Date.now();
 
     setMessages((prev) => [
       ...prev,
       { id: userId, role: 'user', content: message },
-      {
-        id: assistantId,
-        role: 'assistant',
-        content: '',
-        thinkingSteps: [],
-        thinkingDone: false,
-      },
+      agentMode
+        ? {
+            id: assistantId,
+            role: 'assistant',
+            content: '',
+            agentEvents: [],
+            thinkingDone: false,
+          }
+        : {
+            id: assistantId,
+            role: 'assistant',
+            content: '',
+            thinkingSteps: [],
+            thinkingDone: false,
+          },
     ]);
     setIsLoading(true);
 
     const updateAssistant = (updater: (m: Message) => Message) => {
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? updater(m) : m)));
     };
+
+    if (agentMode) {
+      const cardsOwned = selectedCards
+        .map((id) => {
+          const card = allCards.find((c) => c.card_id === id);
+          return card ? { card_id: card.card_id, card_name: card.card_name } : null;
+        })
+        .filter((c): c is { card_id: string; card_name: string } => c !== null);
+
+      const history: ChatHistoryItem[] = messages
+        .filter((m) => m.content && m.content.trim() !== '')
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      try {
+        await streamChat(message, cardsOwned, history, {
+          onText: (delta) => {
+            updateAssistant((m) => ({ ...m, content: m.content + delta }));
+          },
+          onToolUse: (evt) => {
+            updateAssistant((m) => ({
+              ...m,
+              agentEvents: [
+                ...(m.agentEvents ?? []),
+                {
+                  kind: 'tool_use',
+                  id: evt.id,
+                  tool_name: evt.tool_name,
+                  input: evt.input,
+                },
+              ],
+            }));
+          },
+          onToolResult: (evt) => {
+            updateAssistant((m) => ({
+              ...m,
+              agentEvents: [
+                ...(m.agentEvents ?? []),
+                {
+                  kind: 'tool_result',
+                  tool_use_id: evt.tool_use_id,
+                  summary: evt.summary,
+                  is_error: evt.is_error,
+                },
+              ],
+            }));
+          },
+          onDone: () => {
+            updateAssistant((m) => ({
+              ...m,
+              thinkingDone: true,
+              thinkingElapsed: Math.round((Date.now() - startedAt) / 1000),
+            }));
+          },
+          onError: (err) => {
+            updateAssistant((m) => ({
+              ...m,
+              agentEvents: [
+                ...(m.agentEvents ?? []),
+                {
+                  kind: 'error',
+                  type: err.type,
+                  message: err.message,
+                  status_code: err.status_code,
+                },
+              ],
+              content: m.content || '抱歉，處理過程中發生錯誤，請參考上方錯誤訊息。',
+              thinkingDone: true,
+              thinkingElapsed: Math.round((Date.now() - startedAt) / 1000),
+            }));
+          },
+        });
+      } catch {
+        updateAssistant((m) => ({
+          ...m,
+          content: '抱歉，無法連線到伺服器，請確認後端是否已啟動。',
+          thinkingDone: true,
+        }));
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     try {
       const response = await fetch('/api/recommend/stream', {
@@ -322,6 +417,8 @@ export default function App() {
       <TopNavigation
         onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         isSidebarCollapsed={isSidebarCollapsed}
+        agentMode={agentMode}
+        onAgentModeChange={setAgentMode}
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0">
@@ -344,8 +441,9 @@ export default function App() {
                   {messages.map((message) => (
                     <div key={message.id}>
                       {message.role === 'assistant' &&
-                        message.thinkingSteps &&
-                        message.thinkingSteps.length > 0 && (
+                        ((message.thinkingSteps && message.thinkingSteps.length > 0) ||
+                          (message.agentEvents && message.agentEvents.length > 0) ||
+                          (message.agentEvents && !message.thinkingDone)) && (
                           <div className="flex gap-3 mb-1">
                             <div
                               className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
@@ -361,11 +459,19 @@ export default function App() {
                               </svg>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <ThinkingPanel
-                                steps={message.thinkingSteps}
-                                isDone={message.thinkingDone ?? false}
-                                elapsedSeconds={message.thinkingElapsed}
-                              />
+                              {message.agentEvents ? (
+                                <AgentThinkingPanel
+                                  events={message.agentEvents}
+                                  isDone={message.thinkingDone ?? false}
+                                  elapsedSeconds={message.thinkingElapsed}
+                                />
+                              ) : (
+                                <ThinkingPanel
+                                  steps={message.thinkingSteps ?? []}
+                                  isDone={message.thinkingDone ?? false}
+                                  elapsedSeconds={message.thinkingElapsed}
+                                />
+                              )}
                             </div>
                           </div>
                         )}

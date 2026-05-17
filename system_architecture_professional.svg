@@ -39,7 +39,7 @@
 
   <rect class="canvas" width="1800" height="1200"/>
   <text x="900" y="48" text-anchor="middle" class="title">CTBC x Fubon Credit Card Payment Advisor - System Architecture</text>
-  <text x="900" y="76" text-anchor="middle" class="subtitle">React web app · Unified Starlette backend · Anthropic MCP Connector · FastMCP tools · build-time card data pipeline</text>
+  <text x="900" y="76" text-anchor="middle" class="subtitle">React web app · /api/recommend/stream structured SSE · Claude Haiku parser/reasoner · MCP Connector chat fallback · build-time card data pipeline</text>
 
   <!-- Runtime overview -->
   <rect x="40" y="110" width="1720" height="625" rx="22" class="section"/>
@@ -53,7 +53,7 @@
   <rect x="730" y="175" width="285" height="470" rx="16" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
   <text x="872.5" y="207" text-anchor="middle" class="lane-label" fill="#9a3412">Anthropic Cloud</text>
   <rect x="1050" y="175" width="310" height="470" rx="16" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.5"/>
-  <text x="1205" y="207" text-anchor="middle" class="lane-label" fill="#0f766e">MCP Runtime</text>
+  <text x="1205" y="207" text-anchor="middle" class="lane-label" fill="#0f766e">MCP Interface</text>
   <rect x="1395" y="175" width="315" height="470" rx="16" fill="#f8fafc" stroke="#d1d5db" stroke-width="1.5"/>
   <text x="1552.5" y="207" text-anchor="middle" class="lane-label" fill="#374151">Runtime Data</text>
 
@@ -63,14 +63,17 @@
   <text x="210" y="307" text-anchor="middle" class="body">
     <tspan x="210" dy="0">Vite 6 · React 18 · TypeScript</tspan>
     <tspan x="210" dy="22">Tailwind 4 · Radix UI</tspan>
-    <tspan x="210" dy="30" font-weight="750">User Workflows</tspan>
-    <tspan x="210" dy="22">Card selection · multi-turn chat</tspan>
-    <tspan x="210" dy="22">SSE rendering · tool chips</tspan>
+    <tspan x="210" dy="30" font-weight="750">User Workflow</tspan>
+    <tspan x="210" dy="22">Card selection + chat input</tspan>
+    <tspan x="210" dy="22">ThinkingPanel + result cards</tspan>
   </text>
-  <rect x="96" y="472" width="228" height="94" rx="12" fill="#dbeafe" stroke="#60a5fa" stroke-width="1.3"/>
+  <rect x="96" y="472" width="228" height="112" rx="12" fill="#dbeafe" stroke="#60a5fa" stroke-width="1.3"/>
   <text x="210" y="502" text-anchor="middle" class="card-title" fill="#1e3a8a">Frontend API Client</text>
-  <text x="210" y="531" text-anchor="middle" class="mono">api.ts</text>
-  <text x="210" y="553" text-anchor="middle" class="small">fetchCards() · streamChat()</text>
+  <text x="210" y="531" text-anchor="middle" class="mono">App.tsx + api.ts</text>
+  <text x="210" y="553" text-anchor="middle" class="small">
+    <tspan x="210" dy="0">recommend stream + cards</tspan>
+    <tspan x="210" dy="20">streamChat helper retained (unused)</tspan>
+  </text>
 
   <!-- Backend card -->
   <rect x="416" y="230" width="248" height="168" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
@@ -78,16 +81,17 @@
   <text x="540" y="294" text-anchor="middle" class="mono">mcp_server/http_app.py</text>
   <text x="540" y="323" text-anchor="middle" class="body">
     <tspan x="540" dy="0">single uvicorn process</tspan>
-    <tspan x="540" dy="22">REST + chat + MCP mount</tspan>
+    <tspan x="540" dy="22">REST + structured SSE + /mcp</tspan>
     <tspan x="540" dy="22">CORS enabled · port 8000</tspan>
   </text>
   <rect x="416" y="430" width="248" height="154" rx="12" fill="#ffffff" stroke="#22c55e" stroke-width="1.5"/>
   <text x="540" y="461" text-anchor="middle" class="card-title" fill="#166534">API Surface</text>
   <text x="540" y="490" text-anchor="middle" class="body">
-    <tspan x="540" dy="0">POST /api/chat  → SSE stream</tspan>
-    <tspan x="540" dy="22">GET /api/cards</tspan>
-    <tspan x="540" dy="22">POST search · recommend · compare</tspan>
-    <tspan x="540" dy="22">POST promotions · card-details</tspan>
+    <tspan x="540" dy="0">POST /api/recommend/stream</tspan>
+    <tspan x="540" dy="21">GET /api/cards</tspan>
+    <tspan x="540" dy="21">POST search · recommend · compare</tspan>
+    <tspan x="540" dy="21">POST promotions · card-details</tspan>
+    <tspan x="540" dy="21">POST /api/chat backup</tspan>
   </text>
 
   <!-- Anthropic cards -->
@@ -95,15 +99,15 @@
   <text x="872.5" y="274" text-anchor="middle" class="card-title" fill="#9a3412">Claude API</text>
   <text x="872.5" y="305" text-anchor="middle" class="mono">Sonnet 4.6 + Haiku 4.5</text>
   <text x="872.5" y="332" text-anchor="middle" class="small">
-    <tspan x="872.5" dy="0">Sonnet: chat stream + MCP</tspan>
-    <tspan x="872.5" dy="20">Haiku: scenario parsing</tspan>
+    <tspan x="872.5" dy="0">Haiku: scenario parsing</tspan>
     <tspan x="872.5" dy="20">Haiku: recommendation reasons</tspan>
+    <tspan x="872.5" dy="20">Sonnet: /api/chat backup</tspan>
   </text>
-  <rect x="760" y="442" width="225" height="136" rx="12" fill="#fed7aa" stroke="#ea580c" stroke-width="2"/>
-  <text x="872.5" y="474" text-anchor="middle" class="card-title" fill="#9a3412">MCP Connector</text>
-  <text x="872.5" y="505" text-anchor="middle" class="body">
-    <tspan x="872.5" dy="0">mcp_servers URL</tspan>
-    <tspan x="872.5" dy="22">beta header enabled</tspan>
+  <rect x="760" y="414" width="225" height="112" rx="12" fill="#fed7aa" stroke="#ea580c" stroke-width="2"/>
+  <text x="872.5" y="446" text-anchor="middle" class="card-title" fill="#9a3412">MCP Connector</text>
+  <text x="872.5" y="477" text-anchor="middle" class="body">
+    <tspan x="872.5" dy="0">backup /api/chat path</tspan>
+    <tspan x="872.5" dy="22">mcp_servers URL</tspan>
     <tspan x="872.5" dy="22">tools/list · tools/call</tspan>
   </text>
 
@@ -114,15 +118,14 @@
   <text x="1205" y="330" text-anchor="middle" class="body">
     <tspan x="1205" dy="0">Streamable HTTP</tspan>
     <tspan x="1205" dy="22">JSON-RPC 2.0 protocol</tspan>
+    <tspan x="1205" dy="22">consumed by /api/chat</tspan>
   </text>
-  <rect x="1082" y="432" width="246" height="164" rx="12" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/>
-  <text x="1205" y="462" text-anchor="middle" class="card-title" fill="#134e4a">Payment Tools</text>
-  <text x="1205" y="491" text-anchor="middle" class="small">
-    <tspan x="1205" dy="0">search_by_channel · recommend_payment</tspan>
-    <tspan x="1205" dy="20">compare_cards · get_promotions</tspan>
-    <tspan x="1205" dy="20">get_card_details · list_all_cards</tspan>
-    <tspan x="1205" dy="20">reload_data</tspan>
-    <tspan x="1205" dy="26">Resources: card:// · channels://</tspan>
+  <rect x="744" y="534" width="584" height="96" rx="12" fill="#ffffff" stroke="#0d9488" stroke-width="1.7"/>
+  <text x="1036" y="562" text-anchor="middle" class="card-title" fill="#134e4a">Shared Python Tool Functions</text>
+  <text x="1036" y="586" text-anchor="middle" class="small">
+    <tspan x="1036" dy="0">search_by_channel · recommend_payment · compare_cards</tspan>
+    <tspan x="1036" dy="18">get_card_details · get_promotions · list_all_cards · reload_data</tspan>
+    <tspan x="1036" dy="20">/api/* direct imports · /mcp FastMCP wrapper</tspan>
   </text>
 
   <!-- Runtime data -->
@@ -130,43 +133,45 @@
   <ellipse cx="1555" cy="244" rx="119" ry="21" fill="#f8fafc" stroke="#4b5563" stroke-width="1.7"/>
   <text x="1555" y="298" text-anchor="middle" class="card-title" fill="#1f2937">Processed JSON</text>
   <text x="1555" y="330" text-anchor="middle" class="body">
-    <tspan x="1555" dy="0">merged_cards.json</tspan>
-    <tspan x="1555" dy="22">promotions.json</tspan>
-    <tspan x="1555" dy="22">channels.json</tspan>
+    <tspan x="1555" dy="0">merged_cards.json · 13 cards</tspan>
+    <tspan x="1555" dy="22">promotions.json · 20 promos</tspan>
+    <tspan x="1555" dy="22">channels schema 17 · runtime 13</tspan>
     <tspan x="1555" dy="30">@lru_cache via data_loader.py</tspan>
   </text>
-  <rect x="1436" y="494" width="238" height="112" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="1.4"/>
-  <text x="1555" y="530" text-anchor="middle" class="card-title" fill="#78350f">Guardrails</text>
-  <text x="1555" y="558" text-anchor="middle" class="small" fill="#78350f">
+  <rect x="1436" y="482" width="238" height="124" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="1.4"/>
+  <text x="1555" y="516" text-anchor="middle" class="card-title" fill="#78350f">Guardrails</text>
+  <text x="1555" y="542" text-anchor="middle" class="small" fill="#78350f">
     <tspan x="1555" dy="0">selected cards only</tspan>
-    <tspan x="1555" dy="20">off-topic = no tools</tspan>
-    <tspan x="1555" dy="20">conditions / fallback shown</tspan>
+    <tspan x="1555" dy="18">off-topic short-circuit</tspan>
+    <tspan x="1555" dy="18">JPY → TWD fallback</tspan>
+    <tspan x="1555" dy="18">condition warnings injected</tspan>
   </text>
 
   <!-- Runtime arrows: no inline labels, only clean gutters -->
   <path d="M324 338 H416" class="blue-line" marker-end="url(#arrow-blue)"/>
   <path d="M664 314 H760" class="orange-line" marker-end="url(#arrow-orange)"/>
-  <path d="M872.5 390 V442" class="orange-line" marker-end="url(#arrow-orange)"/>
-  <path d="M985 510 H1032 V312 H1082" class="teal-line" marker-end="url(#arrow-teal)"/>
-  <path d="M1205 386 V432" class="teal-line" marker-end="url(#arrow-teal)"/>
-  <path d="M1328 514 H1378 V351 H1436" class="gray-line" marker-end="url(#arrow-gray)"/>
-  <path d="M416 555 H374 V634 H210 V566" class="green-line dashed" marker-end="url(#arrow-green)"/>
+  <path d="M664 568 H744" class="green-line" marker-end="url(#arrow-green)"/>
+  <path d="M872.5 390 V414" class="gray-line dashed" marker-end="url(#arrow-gray)"/>
+  <path d="M985 470 H1032 V312 H1082" class="gray-line dashed" marker-end="url(#arrow-gray)"/>
+  <path d="M1205 386 V534" class="teal-line" marker-end="url(#arrow-teal)"/>
+  <path d="M1328 582 H1378 V351 H1436" class="gray-line" marker-end="url(#arrow-gray)"/>
+  <path d="M416 567 H374 V634 H210 V584" class="green-line dashed" marker-end="url(#arrow-green)"/>
   <path d="M416 505 H360 V507 H324" class="green-line dashed" marker-end="url(#arrow-green)"/>
 
   <!-- Request flow legend -->
   <rect x="70" y="665" width="1640" height="48" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
   <circle cx="98" cy="689" r="13" fill="#2563eb"/><text x="98" y="693" text-anchor="middle" class="num">1</text>
-  <text x="120" y="694" class="small">Frontend sends chat or REST request</text>
-  <circle cx="378" cy="689" r="13" fill="#ea580c"/><text x="378" y="693" text-anchor="middle" class="num">2</text>
-  <text x="400" y="694" class="small">Backend streams Claude Messages API</text>
+  <text x="120" y="694" class="small">POST /api/recommend/stream</text>
+  <circle cx="378" cy="689" r="13" fill="#16a34a"/><text x="378" y="693" text-anchor="middle" class="num">2</text>
+  <text x="400" y="694" class="small">structured SSE to UI</text>
   <circle cx="680" cy="689" r="13" fill="#ea580c"/><text x="680" y="693" text-anchor="middle" class="num">3</text>
-  <text x="702" y="694" class="small">Claude selects an MCP tool</text>
+  <text x="702" y="694" class="small">Haiku API call</text>
   <circle cx="938" cy="689" r="13" fill="#0d9488"/><text x="938" y="693" text-anchor="middle" class="num">4</text>
-  <text x="960" y="694" class="small">Connector calls /mcp tools</text>
+  <text x="960" y="694" class="small">direct imports or MCP wrapper</text>
   <circle cx="1190" cy="689" r="13" fill="#64748b"/><text x="1190" y="693" text-anchor="middle" class="num">5</text>
-  <text x="1212" y="694" class="small">Tools read cached JSON</text>
+  <text x="1212" y="694" class="small">cached JSON lookup</text>
   <circle cx="1442" cy="689" r="13" fill="#16a34a"/><text x="1442" y="693" text-anchor="middle" class="num">6</text>
-  <text x="1464" y="694" class="small">SSE returns text, tool_use and tool_result events</text>
+  <text x="1464" y="694" class="small">ThinkingPanel + cards</text>
 
   <!-- Build-time pipeline -->
   <rect x="40" y="775" width="1720" height="355" rx="22" class="section"/>
@@ -177,19 +182,19 @@
   <text x="208" y="896" text-anchor="middle" class="card-title" fill="#14532d">CTBC API Scrape</text>
   <text x="208" y="925" text-anchor="middle" class="small">
     <tspan x="208" dy="0">ctbc_scraper.py</tspan>
-    <tspan x="208" dy="20">ctbc_cards + promotions</tspan>
+    <tspan x="208" dy="20">ctbc_cards + promotions.json</tspan>
   </text>
   <rect x="378" y="866" width="232" height="100" rx="12" fill="#ecfdf5" stroke="#16a34a" stroke-width="1.5"/>
   <text x="494" y="896" text-anchor="middle" class="card-title" fill="#14532d">Card Feature Scrape</text>
   <text x="494" y="925" text-anchor="middle" class="small">
     <tspan x="494" dy="0">card_feature_scraper.py</tspan>
-    <tspan x="494" dy="20">precise channel rewards</tspan>
+    <tspan x="494" dy="20">5 CTBC card feature files</tspan>
   </text>
   <rect x="664" y="866" width="232" height="100" rx="12" fill="#ecfdf5" stroke="#16a34a" stroke-width="1.5"/>
   <text x="780" y="896" text-anchor="middle" class="card-title" fill="#14532d">Microsite Scrape</text>
   <text x="780" y="925" text-anchor="middle" class="small">
     <tspan x="780" dy="0">microsite_scraper.py</tspan>
-    <tspan x="780" dy="20">merchant-level deals</tspan>
+    <tspan x="780" dy="20">LINE Pay microsite deals</tspan>
   </text>
   <rect x="950" y="866" width="232" height="100" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="8 7"/>
   <text x="1066" y="896" text-anchor="middle" class="card-title" fill="#475569">Fubon Manual Data</text>
@@ -198,9 +203,12 @@
     <tspan x="1066" dy="20">7 curated cards</tspan>
   </text>
 
-  <rect x="468" y="1015" width="462" height="82" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-  <text x="699" y="1046" text-anchor="middle" class="card-title" fill="#14532d">merge.py</text>
-  <text x="699" y="1075" text-anchor="middle" class="small">merges CTBC + Fubon + card_features + microsite deals into v2.0 data</text>
+  <rect x="468" y="1010" width="462" height="92" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="699" y="1039" text-anchor="middle" class="card-title" fill="#14532d">merge.py</text>
+  <text x="699" y="1064" text-anchor="middle" class="small">
+    <tspan x="699" dy="0">outputs merged_cards.json v2.0</tspan>
+    <tspan x="699" dy="20">_CONDITION_WARNINGS + _CHANNEL_OVERRIDES</tspan>
+  </text>
   <rect x="1005" y="1015" width="278" height="82" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="8 7"/>
   <text x="1144" y="1046" text-anchor="middle" class="card-title" fill="#475569">Deterministic Tests</text>
   <text x="1144" y="1075" text-anchor="middle" class="small">tests/test_mcp_tools.py · no LLM required</text>
@@ -209,21 +217,22 @@
   <ellipse cx="1532" cy="910" rx="122" ry="21" fill="#f8fafc" stroke="#4b5563" stroke-width="1.7"/>
   <text x="1532" y="955" text-anchor="middle" class="card-title" fill="#1f2937">Generated Dataset</text>
   <text x="1532" y="987" text-anchor="middle" class="body">
-    <tspan x="1532" dy="0">merged_cards.json</tspan>
-    <tspan x="1532" dy="22">promotions.json</tspan>
-    <tspan x="1532" dy="22">channels.json</tspan>
+    <tspan x="1532" dy="0">merged_cards.json · from merge.py</tspan>
+    <tspan x="1532" dy="22">promotions.json · from CTBC scrape</tspan>
+    <tspan x="1532" dy="22">channels.json · 17 schema channels</tspan>
     <tspan x="1532" dy="28">runtime source of truth</tspan>
   </text>
 
   <path d="M208 966 V1056 H468" class="green-line" marker-end="url(#arrow-green)"/>
-  <path d="M494 966 V1015" class="green-line" marker-end="url(#arrow-green)"/>
-  <path d="M780 966 V1015" class="green-line" marker-end="url(#arrow-green)"/>
-  <path d="M1066 966 V994 H699 V1015" class="gray-line dashed" marker-end="url(#arrow-gray)"/>
+  <path d="M324 946 H346 V1120 H1362 V996 H1410" class="green-line dashed" marker-end="url(#arrow-green)"/>
+  <path d="M494 966 V1010" class="green-line" marker-end="url(#arrow-green)"/>
+  <path d="M780 966 V1010" class="green-line" marker-end="url(#arrow-green)"/>
+  <path d="M1066 966 V994 H699 V1010" class="gray-line dashed" marker-end="url(#arrow-gray)"/>
   <path d="M930 1056 H968 V1118 H1532 V1085" class="green-line" marker-end="url(#arrow-green)"/>
   <path d="M1283 1056 H1410" class="gray-line dashed" marker-end="url(#arrow-gray)"/>
   <path d="M1654 996 H1714 V351 H1674" class="gray-line dashed" marker-end="url(#arrow-gray)"/>
 
   <!-- Deployment note -->
   <rect x="70" y="1148" width="1640" height="28" rx="14" fill="#eef2ff" stroke="#c7d2fe"/>
-  <text x="890" y="1167" text-anchor="middle" class="tiny">Deployment model: the Python service exposes /api/* and /mcp from the same ASGI app; React dev server proxies /api to port 8000, while production MCP URL must be publicly reachable by Anthropic.</text>
+  <text x="890" y="1167" text-anchor="middle" class="tiny">Deployment model: one Starlette app exposes /api/* and /mcp; Vite currently proxies /api to Render, and /api/chat MCP Connector requires a public MCP URL.</text>
 </svg>

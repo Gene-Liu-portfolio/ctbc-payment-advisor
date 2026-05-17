@@ -8,10 +8,15 @@ agent/mcp_bridge.py 的 function-calling 包裝層。
 
 SSE 事件型別：
   - `text`       → 文字增量（assistant 回覆）
-  - `tool_use`   → Claude 呼叫 MCP 工具（tool_name, input）
-  - `tool_result`→ 工具執行結果（content 摘要）
+  - `tool_use`   → Claude 呼叫 MCP 工具（id, tool_name, server_name, input）
+                  ※ input 已累積完整 JSON 才發出，便於前端顯示 Claude 實際傳入的參數
+                  ※ id 可用於與 tool_result.tool_use_id 配對
+  - `tool_result`→ 工具執行結果（tool_use_id, is_error, summary）
+                  ※ 工具一執行完即發，不等到 message_stop，讓前端能即時對齊
   - `done`       → 串流結束（stop_reason）
-  - `error`      → 錯誤（message）
+  - `error`      → 錯誤（type, message, raw_type[, status_code]）
+                  type 列舉：mcp_connection_failed / api_connection_failed /
+                            api_rate_limit / api_invalid_request / api_error / unknown
 """
 
 from __future__ import annotations
@@ -20,7 +25,13 @@ import json
 import os
 from typing import AsyncIterator
 
-from anthropic import AsyncAnthropic
+from anthropic import (
+    APIConnectionError,
+    APIStatusError,
+    AsyncAnthropic,
+    BadRequestError,
+    RateLimitError,
+)
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
@@ -31,6 +42,7 @@ MCP_PUBLIC_URL = os.getenv(
     "https://ctbc-payment-advisor.onrender.com/mcp",
 )
 MCP_BETA_HEADER = "mcp-client-2025-04-04"
+RESULT_TRUNCATE_LIMIT = 2000  # tool_result.summary 字元上限，避免一次塞太大塊
 
 
 def _build_system_prompt(cards_info: list[dict]) -> str:
@@ -87,6 +99,42 @@ def _sse(event: str, data: dict) -> bytes:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode("utf-8")
 
 
+def _classify_error(exc: Exception) -> dict:
+    """把 Anthropic SDK 例外分類為前端可辨識的 error payload。"""
+    msg = str(exc)
+    raw_type = type(exc).__name__
+    lowered = msg.lower()
+    looks_like_mcp = "mcp" in lowered or "connector" in lowered
+
+    if isinstance(exc, APIConnectionError):
+        if looks_like_mcp:
+            return {"type": "mcp_connection_failed", "message": f"MCP 工具伺服器連線失敗：{msg}", "raw_type": raw_type}
+        return {"type": "api_connection_failed", "message": f"無法連線至 Claude API：{msg}", "raw_type": raw_type}
+
+    if isinstance(exc, RateLimitError):
+        return {"type": "api_rate_limit", "message": "Claude API 流量限制（429），請稍後再試", "raw_type": raw_type}
+
+    if isinstance(exc, BadRequestError):
+        return {"type": "api_invalid_request", "message": f"Claude API 參數錯誤：{msg}", "raw_type": raw_type}
+
+    if isinstance(exc, APIStatusError):
+        if looks_like_mcp:
+            return {
+                "type": "mcp_connection_failed",
+                "message": f"MCP 工具伺服器錯誤（{exc.status_code}）：{msg}",
+                "raw_type": raw_type,
+                "status_code": exc.status_code,
+            }
+        return {
+            "type": "api_error",
+            "message": f"Claude API 錯誤（{exc.status_code}）：{msg}",
+            "raw_type": raw_type,
+            "status_code": exc.status_code,
+        }
+
+    return {"type": "unknown", "message": msg or "未知錯誤", "raw_type": raw_type}
+
+
 async def _stream_chat(
     user_message: str,
     history: list[dict],
@@ -97,6 +145,9 @@ async def _stream_chat(
     system_prompt = _build_system_prompt(cards_info)
 
     messages = list(history) + [{"role": "user", "content": user_message}]
+
+    # 以 content block index 追蹤每個 mcp_tool_use 的 input 累積狀態
+    pending_tool_uses: dict[int, dict] = {}
 
     try:
         async with client.beta.messages.stream(
@@ -118,43 +169,65 @@ async def _stream_chat(
 
                 if etype == "content_block_start":
                     block = getattr(event, "content_block", None)
+                    idx = getattr(event, "index", None)
                     btype = getattr(block, "type", None)
-                    if btype == "mcp_tool_use":
-                        yield _sse("tool_use", {
-                            "tool_name": getattr(block, "name", ""),
+
+                    if btype == "mcp_tool_use" and idx is not None:
+                        # 暫存 tool_use 區塊，等 input JSON delta 累積完整再 emit
+                        pending_tool_uses[idx] = {
+                            "id": getattr(block, "id", ""),
+                            "name": getattr(block, "name", ""),
                             "server_name": getattr(block, "server_name", ""),
-                            "input": getattr(block, "input", {}),
+                            "input_buffer": "",
+                        }
+
+                    elif btype == "mcp_tool_result":
+                        # 工具結果為原子內容，抵達即立刻發給前端
+                        content = getattr(block, "content", []) or []
+                        summary = ""
+                        for c in content:
+                            if getattr(c, "type", None) == "text":
+                                summary = getattr(c, "text", "")[:RESULT_TRUNCATE_LIMIT]
+                                break
+                        yield _sse("tool_result", {
+                            "tool_use_id": getattr(block, "tool_use_id", ""),
+                            "is_error": getattr(block, "is_error", False),
+                            "summary": summary,
                         })
 
                 elif etype == "content_block_delta":
                     delta = getattr(event, "delta", None)
+                    idx = getattr(event, "index", None)
                     dtype = getattr(delta, "type", None)
+
                     if dtype == "text_delta":
                         yield _sse("text", {"text": getattr(delta, "text", "")})
 
+                    elif dtype == "input_json_delta" and idx in pending_tool_uses:
+                        pending_tool_uses[idx]["input_buffer"] += getattr(delta, "partial_json", "")
+
                 elif etype == "content_block_stop":
-                    # MCP tool 結果在 stop 後可從 final message 取得，這裡先不發
-                    pass
+                    idx = getattr(event, "index", None)
+                    if idx in pending_tool_uses:
+                        info = pending_tool_uses.pop(idx)
+                        buf = info["input_buffer"]
+                        try:
+                            input_data = json.loads(buf) if buf.strip() else {}
+                        except json.JSONDecodeError:
+                            input_data = {"_raw": buf}
+                        yield _sse("tool_use", {
+                            "id": info["id"],
+                            "tool_name": info["name"],
+                            "server_name": info["server_name"],
+                            "input": input_data,
+                        })
 
                 elif etype == "message_stop":
                     final = await stream.get_final_message()
-                    for block in final.content:
-                        if getattr(block, "type", None) == "mcp_tool_result":
-                            content = getattr(block, "content", [])
-                            summary = ""
-                            for c in content:
-                                if getattr(c, "type", None) == "text":
-                                    summary = getattr(c, "text", "")[:500]
-                                    break
-                            yield _sse("tool_result", {
-                                "tool_use_id": getattr(block, "tool_use_id", ""),
-                                "is_error": getattr(block, "is_error", False),
-                                "summary": summary,
-                            })
                     yield _sse("done", {"stop_reason": final.stop_reason})
 
-    except Exception as e:
-        yield _sse("error", {"message": str(e), "type": type(e).__name__})
+    except Exception as exc:
+        yield _sse("error", _classify_error(exc))
 
 
 async def chat_endpoint(request: Request):

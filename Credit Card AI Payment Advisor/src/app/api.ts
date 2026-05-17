@@ -44,6 +44,7 @@ export interface ChatHistoryItem {
 }
 
 export interface ToolUseEvent {
+  id: string;
   tool_name: string;
   server_name: string;
   input: Record<string, unknown>;
@@ -55,12 +56,28 @@ export interface ToolResultEvent {
   summary: string;
 }
 
+/** 對應後端 _classify_error() 的分類；type 用於前端決定錯誤畫面。 */
+export type ChatErrorType =
+  | 'mcp_connection_failed'
+  | 'api_connection_failed'
+  | 'api_rate_limit'
+  | 'api_invalid_request'
+  | 'api_error'
+  | 'unknown';
+
+export interface ChatErrorEvent {
+  type: ChatErrorType;
+  message: string;
+  raw_type?: string;
+  status_code?: number;
+}
+
 export interface ChatStreamHandlers {
   onText?: (delta: string) => void;
   onToolUse?: (evt: ToolUseEvent) => void;
   onToolResult?: (evt: ToolResultEvent) => void;
   onDone?: (stopReason: string | null) => void;
-  onError?: (message: string) => void;
+  onError?: (evt: ChatErrorEvent) => void;
 }
 
 /** GET /api/cards */
@@ -95,7 +112,11 @@ export async function streamChat(
   });
 
   if (!res.ok || !res.body) {
-    handlers.onError?.(`HTTP ${res.status}`);
+    handlers.onError?.({
+      type: 'api_error',
+      message: `HTTP ${res.status}`,
+      status_code: res.status,
+    });
     return;
   }
 
@@ -138,7 +159,12 @@ export async function streamChat(
             handlers.onDone?.(data.stop_reason ?? null);
             break;
           case 'error':
-            handlers.onError?.(data.message ?? 'unknown error');
+            handlers.onError?.({
+              type: (data.type as ChatErrorType) ?? 'unknown',
+              message: data.message ?? '未知錯誤',
+              raw_type: data.raw_type,
+              status_code: data.status_code,
+            });
             break;
         }
       } catch {

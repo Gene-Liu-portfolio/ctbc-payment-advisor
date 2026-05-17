@@ -1,13 +1,21 @@
-import { Globe, RotateCcw, Menu } from 'lucide-react';
+import { Globe, RotateCcw, Menu, Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
+import { Switch } from './ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 interface TopNavigationProps {
   onToggleSidebar: () => void;
   isSidebarCollapsed: boolean;
+  agentMode: boolean;
+  onAgentModeChange: (next: boolean) => void;
 }
 
-export function TopNavigation({ onToggleSidebar, isSidebarCollapsed }: TopNavigationProps) {
+export function TopNavigation({
+  onToggleSidebar,
+  isSidebarCollapsed: _isSidebarCollapsed,
+  agentMode,
+  onAgentModeChange,
+}: TopNavigationProps) {
   return (
     <div className="h-16 border-b bg-white flex items-center justify-between px-6" style={{ borderColor: 'rgba(44, 62, 80, 0.08)' }}>
       <div className="flex items-center gap-3">
@@ -30,6 +38,31 @@ export function TopNavigation({ onToggleSidebar, isSidebarCollapsed }: TopNaviga
       </div>
 
       <div className="flex items-center gap-3">
+        <label
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer transition-colors"
+          style={{
+            borderColor: agentMode ? '#007C7C' : 'rgba(44, 62, 80, 0.15)',
+            backgroundColor: agentMode ? '#F0FAFA' : 'transparent',
+          }}
+          title="開啟後，由 Claude 自行決定要呼叫哪些 MCP 工具（較慢但更靈活）"
+        >
+          <Sparkles
+            className="w-4 h-4"
+            style={{ color: agentMode ? '#007C7C' : '#6B7280' }}
+          />
+          <span
+            className="text-xs font-medium"
+            style={{ color: agentMode ? '#007C7C' : '#6B7280' }}
+          >
+            Agent 模式
+          </span>
+          <Switch
+            checked={agentMode}
+            onCheckedChange={onAgentModeChange}
+            className="data-[state=checked]:bg-[#007C7C]"
+          />
+        </label>
+
         <Button variant="ghost" size="sm" className="gap-2">
           <Globe className="w-4 h-4" />
           <span>繁中</span>
