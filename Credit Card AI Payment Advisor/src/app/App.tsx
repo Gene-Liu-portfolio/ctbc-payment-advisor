@@ -183,6 +183,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [agentMode, setAgentMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
   const idCounter = useRef(0);
 
   useEffect(() => {
@@ -193,10 +194,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && shouldAutoScrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const handleChatScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    shouldAutoScrollRef.current = distanceFromBottom < 80;
+  };
 
   const handleCardToggle = (cardId: string) => {
     setSelectedCards((prev) =>
@@ -239,6 +248,7 @@ export default function App() {
     }
 
     setShowWelcome(false);
+    shouldAutoScrollRef.current = true;
 
     const userId = ++idCounter.current;
     const assistantId = ++idCounter.current;
@@ -529,7 +539,7 @@ export default function App() {
         />
 
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          <div ref={scrollRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto">
             <div className="max-w-5xl mx-auto w-full pb-6">
               {showWelcome && <WelcomeSection onPromptClick={handlePromptClick} />}
 
