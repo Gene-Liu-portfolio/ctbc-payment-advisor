@@ -25,6 +25,7 @@ from mcp_server.tools.search import _build_calculation_trace, search_by_channel
 from mcp_server.tools.recommend import recommend_payment, _extract_amount, _extract_channels
 from mcp_server.tools.compare import compare_cards
 from mcp_server.tools.promotions import get_promotions, get_card_details
+from mcp_server.tool_trace import compact_search_result, tool_result_event
 from mcp_server.utils.data_loader import (
     get_all_cards, get_card_by_id, get_cards_by_ids,
     get_cards_menu, get_best_channel_for_card, get_best_deal_for_card,
@@ -311,6 +312,30 @@ class TestSearchByChannel:
         if result["results"]:
             r = result["results"][0]
             assert r["is_fallback"] is True
+
+    def test_compact_search_result_for_tool_result(self):
+        result = search_by_channel("家樂福", cards_owned=COMBO_5, amount=2000, top_k=3)
+        compact = compact_search_result(result)
+
+        assert compact["result_count"] == len(result["results"])
+        assert compact["winner"]["card_name"] == result["results"][0]["card_name"]
+        assert len(compact["candidates"]) <= 4
+        assert "formula" in compact["candidates"][0]
+
+    def test_tool_result_event_shape(self):
+        event = tool_result_event(
+            tool="search_by_channel",
+            channel="家樂福",
+            status="success",
+            summary="回傳 3 張候選卡",
+            data={"result_count": 3},
+        )
+
+        assert event["type"] == "tool_result"
+        assert event["tool"] == "search_by_channel"
+        assert event["channel"] == "家樂福"
+        assert event["status"] == "success"
+        assert event["data"]["result_count"] == 3
 
 
 # ═══════════════════════════════════════════════════════════════════════════

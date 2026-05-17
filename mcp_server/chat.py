@@ -45,6 +45,64 @@ MCP_BETA_HEADER = "mcp-client-2025-04-04"
 RESULT_TRUNCATE_LIMIT = 2000  # tool_result.summary 字元上限，避免一次塞太大塊
 
 
+def _parse_json_text(text: str):
+    """Parse JSON-looking MCP text content; return None when it is plain text."""
+    trimmed = text.strip()
+    if not trimmed or trimmed[0] not in "[{":
+        return None
+    try:
+        return json.loads(trimmed)
+    except json.JSONDecodeError:
+        return None
+
+
+def _extract_recommendation_data(tool_name: str, parsed):
+    """Normalize MCP tool JSON into data the frontend can render as recommendation cards."""
+    if not isinstance(parsed, dict):
+        return None
+
+    normalized_tool = tool_name.split("__")[-1]
+
+    if normalized_tool == "search_by_channel" and isinstance(parsed.get("results"), list):
+        channel_name = parsed.get("channel_name") or parsed.get("query") or "查詢通路"
+        return {
+            "source_tool": normalized_tool,
+            "recommendations": [
+                {
+                    "channel_name": channel_name,
+                    "channel_id": parsed.get("channel_id"),
+                    "best_options": parsed.get("results", []),
+                }
+            ],
+        }
+
+    if normalized_tool == "recommend_payment" and isinstance(parsed.get("recommendations"), list):
+        return {
+            "source_tool": normalized_tool,
+            "parsed": parsed.get("parsed"),
+            "recommendations": parsed.get("recommendations", []),
+        }
+
+    if normalized_tool == "compare_cards" and isinstance(parsed.get("comparison"), list):
+        recommendations = []
+        for comparison in parsed.get("comparison", []):
+            results = comparison.get("card_rates") or []
+            results = sorted(results, key=lambda item: item.get("estimated_cashback") or 0, reverse=True)
+            if results:
+                recommendations.append({
+                    "channel_name": comparison.get("channel_name") or comparison.get("channel") or "比較結果",
+                    "channel_id": comparison.get("channel_id"),
+                    "best_options": results,
+                })
+        if recommendations:
+            return {
+                "source_tool": normalized_tool,
+                "recommendations": recommendations,
+            }
+
+    return None
+
+
 def _build_system_prompt(cards_info: list[dict]) -> str:
     """根據持卡資訊建立 System Prompt，嚴格限制 cards_owned 範圍。"""
     if not cards_info:
@@ -148,6 +206,7 @@ async def _stream_chat(
 
     # 以 content block index 追蹤每個 mcp_tool_use 的 input 累積狀態
     pending_tool_uses: dict[int, dict] = {}
+    emitted_tool_uses: dict[str, dict] = {}
 
     try:
         async with client.beta.messages.stream(
@@ -185,14 +244,23 @@ async def _stream_chat(
                         # 工具結果為原子內容，抵達即立刻發給前端
                         content = getattr(block, "content", []) or []
                         summary = ""
+                        full_text = ""
                         for c in content:
                             if getattr(c, "type", None) == "text":
-                                summary = getattr(c, "text", "")[:RESULT_TRUNCATE_LIMIT]
+                                full_text = getattr(c, "text", "")
+                                summary = full_text[:RESULT_TRUNCATE_LIMIT]
                                 break
+                        tool_use_id = getattr(block, "tool_use_id", "")
+                        tool_info = emitted_tool_uses.get(tool_use_id, {})
+                        tool_name = tool_info.get("tool_name", "")
+                        parsed = _parse_json_text(full_text)
                         yield _sse("tool_result", {
-                            "tool_use_id": getattr(block, "tool_use_id", ""),
+                            "tool_use_id": tool_use_id,
+                            "tool_name": tool_name,
+                            "input": tool_info.get("input"),
                             "is_error": getattr(block, "is_error", False),
                             "summary": summary,
+                            "data": _extract_recommendation_data(tool_name, parsed),
                         })
 
                 elif etype == "content_block_delta":
@@ -221,6 +289,11 @@ async def _stream_chat(
                             "server_name": info["server_name"],
                             "input": input_data,
                         })
+                        emitted_tool_uses[info["id"]] = {
+                            "tool_name": info["name"],
+                            "server_name": info["server_name"],
+                            "input": input_data,
+                        }
 
                 elif etype == "message_stop":
                     final = await stream.get_final_message()

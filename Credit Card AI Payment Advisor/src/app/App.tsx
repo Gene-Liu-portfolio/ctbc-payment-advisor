@@ -6,7 +6,7 @@ import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { CardSelectionPage } from './components/CardSelectionPage';
 import { ThinkingPanel } from './components/ThinkingPanel';
-import type { CalculationCandidate, ThinkingStep } from './components/ThinkingPanel';
+import type { CalculationCandidate, ThinkingStep, ToolResultTrace } from './components/ThinkingPanel';
 import { AgentThinkingPanel } from './components/AgentThinkingPanel';
 import type { AgentEvent } from './components/AgentThinkingPanel';
 import { fetchCards, streamChat } from './api';
@@ -36,6 +36,7 @@ interface Message {
   thinkingDone?: boolean;
   thinkingElapsed?: number;
   agentEvents?: AgentEvent[];
+  preferStructuredResult?: boolean;
 }
 
 const RANK_COLORS = [
@@ -129,6 +130,45 @@ function applyCalculationEvent(
       label: `MCP 完成「${channel}」候選卡計算`,
     },
   ];
+}
+
+function applyToolResultEvent(
+  steps: ThinkingStep[],
+  result: ToolResultTrace,
+): ThinkingStep[] {
+  return [
+    ...steps,
+    {
+      tool: result.tool,
+      status: 'done',
+      kind: 'tool_result',
+      channel: result.channel ?? undefined,
+      label: `MCP 工具回傳：${result.tool}`,
+      toolResult: result,
+    },
+  ];
+}
+
+function recommendationsFromStructuredData(
+  data: {
+    recommendations?: Array<{
+      channel_name?: string;
+      best_options?: SearchResult[];
+    }>;
+  } | null | undefined,
+): Recommendation[] {
+  const recommendations: Recommendation[] = [];
+  const maxCards = 4;
+
+  for (const rec of data?.recommendations ?? []) {
+    const channelName = rec.channel_name ?? '推薦結果';
+    for (const option of rec.best_options ?? []) {
+      if (recommendations.length >= maxCards) return recommendations;
+      recommendations.push(toRecommendation(option, recommendations.length + 1, channelName));
+    }
+  }
+
+  return recommendations;
 }
 
 export default function App() {
@@ -244,7 +284,9 @@ export default function App() {
       try {
         await streamChat(message, cardsOwned, history, {
           onText: (delta) => {
-            updateAssistant((m) => ({ ...m, content: m.content + delta }));
+            updateAssistant((m) => (
+              m.preferStructuredResult ? m : { ...m, content: m.content + delta }
+            ));
           },
           onToolUse: (evt) => {
             updateAssistant((m) => ({
@@ -261,6 +303,7 @@ export default function App() {
             }));
           },
           onToolResult: (evt) => {
+            const structuredRecommendations = recommendationsFromStructuredData(evt.data);
             updateAssistant((m) => ({
               ...m,
               agentEvents: [
@@ -272,6 +315,13 @@ export default function App() {
                   is_error: evt.is_error,
                 },
               ],
+              ...(structuredRecommendations.length > 0
+                ? {
+                    content: '已根據 MCP 工具回傳整理成推薦卡片：',
+                    recommendations: structuredRecommendations,
+                    preferStructuredResult: true,
+                  }
+                : {}),
             }));
           },
           onDone: () => {
@@ -372,6 +422,20 @@ export default function App() {
                   event.candidates ?? [],
                   event.winner ?? null,
                   event.ranking_summary ?? '',
+                ),
+              }));
+            } else if (event.type === 'tool_result') {
+              updateAssistant((m) => ({
+                ...m,
+                thinkingSteps: applyToolResultEvent(
+                  m.thinkingSteps ?? [],
+                  {
+                    tool: event.tool,
+                    channel: event.channel ?? null,
+                    status: event.status === 'error' ? 'error' : 'success',
+                    summary: event.summary ?? '',
+                    data: event.data ?? {},
+                  },
                 ),
               }));
             } else if (event.type === 'result') {

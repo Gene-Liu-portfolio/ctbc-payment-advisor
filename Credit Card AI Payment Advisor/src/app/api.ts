@@ -52,8 +52,19 @@ export interface ToolUseEvent {
 
 export interface ToolResultEvent {
   tool_use_id: string;
+  tool_name?: string;
+  input?: Record<string, unknown>;
   is_error: boolean;
   summary: string;
+  data?: {
+    source_tool?: string;
+    parsed?: unknown;
+    recommendations?: Array<{
+      channel_name?: string;
+      channel_id?: string;
+      best_options?: SearchResult[];
+    }>;
+  } | null;
 }
 
 /** 對應後端 _classify_error() 的分類；type 用於前端決定錯誤畫面。 */

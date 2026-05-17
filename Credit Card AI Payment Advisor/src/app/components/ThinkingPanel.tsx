@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Loader2, CheckCircle2, Wrench } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Loader2, CheckCircle2, Wrench } from 'lucide-react';
 
 export interface CalculationCandidate {
   card_name: string;
@@ -7,15 +7,24 @@ export interface CalculationCandidate {
   estimated_cashback: number | null;
 }
 
+export interface ToolResultTrace {
+  tool: string;
+  channel?: string | null;
+  status: 'success' | 'error';
+  summary: string;
+  data: Record<string, unknown>;
+}
+
 export interface ThinkingStep {
   tool: string;
   status: 'calling' | 'done';
   label: string;
-  kind?: 'step' | 'calculation';
+  kind?: 'step' | 'calculation' | 'tool_result';
   channel?: string;
   candidates?: CalculationCandidate[];
   winner?: CalculationCandidate | null;
   rankingSummary?: string;
+  toolResult?: ToolResultTrace;
 }
 
 interface ThinkingPanelProps {
@@ -42,6 +51,51 @@ const MCP_TOOL_NAMES = new Set([
   'list_all_cards',
   'reload_data',
 ]);
+
+function formatJson(data: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch {
+    return String(data);
+  }
+}
+
+function ToolResultBlock({ result }: { result: ToolResultTrace }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const isError = result.status === 'error';
+
+  return (
+    <div className="mt-1 rounded-md border bg-white" style={{ borderColor: isError ? '#FCA5A5' : '#007C7C1f' }}>
+      <button
+        type="button"
+        className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left"
+        onClick={() => setIsOpen((v) => !v)}
+      >
+        {isError ? (
+          <AlertTriangle size={11} className="flex-shrink-0" style={{ color: '#DC2626' }} />
+        ) : (
+          <CheckCircle2 size={11} className="flex-shrink-0" style={{ color: '#22c55e' }} />
+        )}
+        <span className="text-[11px] font-medium flex-1" style={{ color: isError ? '#991B1B' : '#0F766E' }}>
+          MCP 工具回傳：{result.tool}
+          {result.channel ? ` / ${result.channel}` : ''}
+        </span>
+        {isOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+      </button>
+      <div className="px-2 pb-1.5 text-[11px] leading-relaxed" style={{ color: '#4B5563' }}>
+        {result.summary}
+      </div>
+      {isOpen && (
+        <pre
+          className="mx-2 mb-2 max-h-72 overflow-auto rounded px-2 py-1.5 text-[11px] font-mono"
+          style={{ backgroundColor: isError ? '#FEF2F2' : '#F0FAFA', color: '#1F2937' }}
+        >
+          {formatJson(result.data)}
+        </pre>
+      )}
+    </div>
+  );
+}
 
 export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -146,6 +200,9 @@ export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelPr
                       </div>
                     )}
                   </div>
+                )}
+                {step.kind === 'tool_result' && step.toolResult && (
+                  <ToolResultBlock result={step.toolResult} />
                 )}
               </div>
             </div>

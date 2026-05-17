@@ -45,6 +45,10 @@ from .tools.promotions import get_promotions as _get_promotions
 from .tools.recommend import recommend_payment as _recommend_payment
 from .tools.search import _channel_display_name
 from .tools.search import search_by_channel as _search_by_channel
+from .tool_trace import compact_card_details as _compact_card_details
+from .tool_trace import compact_promotions as _compact_promotions
+from .tool_trace import compact_search_result as _compact_search_result
+from .tool_trace import tool_result_event as _tool_result_event
 from .utils.channel_mapper import MERCHANT_TO_CHANNEL, normalize_merchant
 from .utils.data_loader import get_cards_menu, get_data_summary
 from .utils.llm_parser import parse_scenario
@@ -340,7 +344,6 @@ async def api_recommend_stream(request: Request):
             )
 
             if result.get("results"):
-                yield sse(calculation_event(channel_name, result))
                 top_card = result["results"][0]["card_name"]
                 yield sse({
                     "type": "tool_call",
@@ -350,13 +353,20 @@ async def api_recommend_stream(request: Request):
                     "channel": channel_name,
                     "result_count": len(result["results"]),
                 })
+                yield sse(_tool_result_event(
+                    tool="search_by_channel",
+                    channel=channel_name,
+                    status="success",
+                    summary=f"回傳 {len(result['results'])} 張候選卡，最高回饋為 {top_card}",
+                    data=_compact_search_result(result),
+                ))
+                yield sse(calculation_event(channel_name, result))
                 recommendations.append({
                     "channel_name": channel_name,
                     "channel_id": ch["channel_id"],
                     "best_options": result["results"],
                 })
             else:
-                yield sse(calculation_event(channel_name, result))
                 yield sse({
                     "type": "tool_call",
                     "tool": "search_by_channel",
@@ -365,6 +375,14 @@ async def api_recommend_stream(request: Request):
                     "channel": channel_name,
                     "result_count": 0,
                 })
+                yield sse(_tool_result_event(
+                    tool="search_by_channel",
+                    channel=channel_name,
+                    status="success",
+                    summary=f"「{channel_name}」沒有回傳符合條件的候選卡",
+                    data=_compact_search_result(result),
+                ))
+                yield sse(calculation_event(channel_name, result))
 
         if recommendations:
             unique_card_ids = []
@@ -416,6 +434,12 @@ async def api_recommend_stream(request: Request):
                 "status": "done",
                 "label": "候選卡片限制條件已補充",
             })
+            yield sse(_tool_result_event(
+                tool="get_card_details",
+                status="success",
+                summary=f"回傳 {len(card_details)} 張候選卡片詳情與限制條件",
+                data=_compact_card_details(card_details),
+            ))
 
             yield sse({
                 "type": "tool_call",
@@ -456,6 +480,12 @@ async def api_recommend_stream(request: Request):
                 "status": "done",
                 "label": f"已查詢相關活動，共找到 {total_promos} 筆通路優惠",
             })
+            yield sse(_tool_result_event(
+                tool="get_promotions",
+                status="success",
+                summary=f"回傳 {len(promotions_by_channel)} 個通路的活動資料，共 {total_promos} 筆優惠",
+                data=_compact_promotions(promotions_by_channel),
+            ))
 
             yield sse({
                 "type": "tool_call",
