@@ -45,6 +45,8 @@ const RANK_COLORS = [
   'from-fuchsia-500 to-fuchsia-600',
 ];
 
+const TOOL_TRACE_STEP_DELAY_MS = 220;
+
 function toRecommendation(result: SearchResult, rank: number, channel: string): Recommendation {
   const rate = result.cashback_rate != null ? `${(result.cashback_rate * 100).toFixed(1)}%` : '—';
   const estimated = result.estimated_cashback != null
@@ -279,6 +281,39 @@ export default function App() {
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? updater(m) : m)));
     };
 
+    const assistantUpdateQueue: Array<(m: Message) => Message> = [];
+    let isProcessingAssistantQueue = false;
+    let queueDrainResolve: (() => void) | null = null;
+
+    const flushAssistantUpdateQueue = () => {
+      const next = assistantUpdateQueue.shift();
+      if (!next) {
+        isProcessingAssistantQueue = false;
+        queueDrainResolve?.();
+        queueDrainResolve = null;
+        return;
+      }
+
+      updateAssistant(next);
+      window.setTimeout(flushAssistantUpdateQueue, TOOL_TRACE_STEP_DELAY_MS);
+    };
+
+    const enqueueAssistantUpdate = (updater: (m: Message) => Message) => {
+      assistantUpdateQueue.push(updater);
+      if (!isProcessingAssistantQueue) {
+        isProcessingAssistantQueue = true;
+        flushAssistantUpdateQueue();
+      }
+    };
+
+    const waitForAssistantUpdateQueue = () => new Promise<void>((resolve) => {
+      if (!isProcessingAssistantQueue && assistantUpdateQueue.length === 0) {
+        resolve();
+        return;
+      }
+      queueDrainResolve = resolve;
+    });
+
     if (agentMode) {
       const cardsOwned = selectedCards
         .map((id) => {
@@ -407,7 +442,7 @@ export default function App() {
             const event = JSON.parse(dataLine.replace(/^data:\s*/, ''));
 
             if (event.type === 'tool_call') {
-              updateAssistant((m) => ({
+              enqueueAssistantUpdate((m) => ({
                 ...m,
                 thinkingSteps: applyStepEvent(
                   m.thinkingSteps ?? [],
@@ -418,13 +453,13 @@ export default function App() {
                 ),
               }));
             } else if (event.type === 'thinking_done') {
-              updateAssistant((m) => ({
+              enqueueAssistantUpdate((m) => ({
                 ...m,
                 thinkingDone: true,
                 thinkingElapsed: event.elapsed_seconds,
               }));
             } else if (event.type === 'mcp_calculation') {
-              updateAssistant((m) => ({
+              enqueueAssistantUpdate((m) => ({
                 ...m,
                 thinkingSteps: applyCalculationEvent(
                   m.thinkingSteps ?? [],
@@ -435,7 +470,7 @@ export default function App() {
                 ),
               }));
             } else if (event.type === 'tool_result') {
-              updateAssistant((m) => ({
+              enqueueAssistantUpdate((m) => ({
                 ...m,
                 thinkingSteps: applyToolResultEvent(
                   m.thinkingSteps ?? [],
@@ -451,9 +486,9 @@ export default function App() {
             } else if (event.type === 'result') {
               const data = event.data;
               if (data.off_topic_message) {
-                updateAssistant((m) => ({ ...m, content: data.off_topic_message }));
+                enqueueAssistantUpdate((m) => ({ ...m, content: data.off_topic_message }));
               } else if (data.error) {
-                updateAssistant((m) => ({ ...m, content: `抱歉，查詢時發生錯誤：${data.error}` }));
+                enqueueAssistantUpdate((m) => ({ ...m, content: `抱歉，查詢時發生錯誤：${data.error}` }));
               } else {
                 const maxCards = 4;
                 const recommendations: Recommendation[] = [];
@@ -479,7 +514,7 @@ export default function App() {
                   ? `系統識別出通路：${channelNames}${amountText}。以下是最佳付款選項：`
                   : '目前沒有找到符合條件的推薦卡片。';
 
-                updateAssistant((m) => ({
+                enqueueAssistantUpdate((m) => ({
                   ...m,
                   content: summary,
                   recommendations,
@@ -498,6 +533,7 @@ export default function App() {
         thinkingDone: true,
       }));
     } finally {
+      await waitForAssistantUpdateQueue();
       setIsLoading(false);
     }
   };

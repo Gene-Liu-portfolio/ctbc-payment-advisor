@@ -175,15 +175,17 @@ export function ThinkingPanel({ steps, isDone, elapsedSeconds }: ThinkingPanelPr
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div
-                  className="text-xs leading-relaxed"
-                  style={{ color: step.status === 'done' ? '#374151' : '#007C7C' }}
-                >
-                  <span className="font-medium mr-1" style={{ color: '#6B7280' }}>
-                    [{TOOL_LABELS[step.tool] ?? step.tool}]
-                  </span>
-                  {step.label}
-                </div>
+                {step.kind !== 'tool_result' && (
+                  <div
+                    className="text-xs leading-relaxed"
+                    style={{ color: step.status === 'done' ? '#374151' : '#007C7C' }}
+                  >
+                    <span className="font-medium mr-1" style={{ color: '#6B7280' }}>
+                      [{TOOL_LABELS[step.tool] ?? step.tool}]
+                    </span>
+                    {step.label}
+                  </div>
+                )}
                 {step.kind === 'calculation' && step.candidates && step.candidates.length > 0 && (
                   <div className="mt-1 rounded-md border bg-white px-2 py-1.5" style={{ borderColor: '#007C7C1f' }}>
                     <div className="space-y-0.5">

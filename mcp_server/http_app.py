@@ -45,9 +45,6 @@ from .tools.promotions import get_promotions as _get_promotions
 from .tools.recommend import recommend_payment as _recommend_payment
 from .tools.search import _channel_display_name
 from .tools.search import search_by_channel as _search_by_channel
-from .tool_trace import compact_card_details as _compact_card_details
-from .tool_trace import compact_promotions as _compact_promotions
-from .tool_trace import compact_search_result as _compact_search_result
 from .tool_trace import tool_result_event as _tool_result_event
 from .utils.channel_mapper import MERCHANT_TO_CHANNEL, normalize_merchant
 from .utils.data_loader import get_cards_menu, get_data_summary
@@ -358,7 +355,7 @@ async def api_recommend_stream(request: Request):
                     channel=channel_name,
                     status="success",
                     summary=f"回傳 {len(result['results'])} 張候選卡，最高回饋為 {top_card}",
-                    data=_compact_search_result(result),
+                    data=result,
                 ))
                 yield sse(calculation_event(channel_name, result))
                 recommendations.append({
@@ -380,7 +377,7 @@ async def api_recommend_stream(request: Request):
                     channel=channel_name,
                     status="success",
                     summary=f"「{channel_name}」沒有回傳符合條件的候選卡",
-                    data=_compact_search_result(result),
+                    data=result,
                 ))
                 yield sse(calculation_event(channel_name, result))
 
@@ -438,7 +435,7 @@ async def api_recommend_stream(request: Request):
                 tool="get_card_details",
                 status="success",
                 summary=f"回傳 {len(card_details)} 張候選卡片詳情與限制條件",
-                data=_compact_card_details(card_details),
+                data=card_details,
             ))
 
             yield sse({
@@ -484,7 +481,7 @@ async def api_recommend_stream(request: Request):
                 tool="get_promotions",
                 status="success",
                 summary=f"回傳 {len(promotions_by_channel)} 個通路的活動資料，共 {total_promos} 筆優惠",
-                data=_compact_promotions(promotions_by_channel),
+                data=promotions_by_channel,
             ))
 
             yield sse({
