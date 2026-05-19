@@ -103,7 +103,7 @@ def search_by_channel(
             continue
 
         # ── 查 channels（已合併 card_features + API）──
-        best_ch = get_best_channel_for_card(card, channel_id)
+        best_ch = get_best_channel_for_card(card, channel_id, merchant_hint=merchant_hint)
         if best_ch is None:
             continue
 

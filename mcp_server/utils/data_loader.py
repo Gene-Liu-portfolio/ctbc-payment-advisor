@@ -17,6 +17,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+from .channel_mapper import extract_merchants_from_text, normalize_merchant
+
 # 資料路徑：優先使用環境變數，否則用專案根目錄 data/
 import os
 _DATA_ROOT = Path(os.environ.get("DATA_ROOT", Path(__file__).parent.parent.parent / "data"))
@@ -136,13 +138,22 @@ def filter_channels_by_id(card: dict, channel_id: str) -> list[dict]:
     return matched
 
 
-def get_best_channel_for_card(card: dict, channel_id: str) -> Optional[dict]:
+def get_best_channel_for_card(
+    card: dict,
+    channel_id: str,
+    merchant_hint: Optional[str] = None,
+) -> Optional[dict]:
     """
     從卡片的 channels 中，取出指定 channel_id 中回饋率最高的那筆。
     channels 已在 build time 合併（card_features 優先），直接查即可。
     若無匹配則嘗試 general 通路，並標記 is_fallback=True。
     """
     channels = filter_channels_by_id(card, channel_id)
+    if merchant_hint and channel_id != "general":
+        channels = [
+            ch for ch in channels
+            if _channel_matches_merchant_hint(ch, merchant_hint)
+        ]
     if channel_id == "general":
         channels = [
             ch for ch in channels
@@ -167,6 +178,31 @@ def get_best_channel_for_card(card: dict, channel_id: str) -> Optional[dict]:
     best = dict(best)  # 複製避免污染快取物件
     best["is_fallback"] = is_fallback
     return best
+
+
+def _channel_matches_merchant_hint(channel: dict, merchant_hint: str) -> bool:
+    """
+    Channel-level rewards can be either category-wide or merchant-specific.
+    When the user names a concrete merchant, only keep channel rewards that
+    explicitly mention the same merchant; otherwise use safe general fallback.
+    """
+    canonical_hint = normalize_merchant(merchant_hint)
+    hint_lower = canonical_hint.lower()
+
+    explicit_merchants = channel.get("merchants") or []
+    for merchant in explicit_merchants:
+        if normalize_merchant(str(merchant)).lower() == hint_lower:
+            return True
+
+    text = " ".join(
+        str(channel.get(field) or "")
+        for field in ("channel_name", "cashback_description", "conditions")
+    )
+    mentioned = extract_merchants_from_text(text)
+    if any(normalize_merchant(m).lower() == hint_lower for m in mentioned):
+        return True
+
+    return hint_lower in text.lower()
 
 
 def _is_safe_general_fallback(channel: dict, requested_channel_id: str) -> bool:

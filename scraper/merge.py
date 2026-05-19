@@ -55,8 +55,12 @@ _CONDITION_WARNINGS: dict[tuple[str, str], str] = {
 
 
 _CHANNEL_OVERRIDES: dict[tuple[str, str], dict] = {
+    ("ctbc_c_uniopen", "general"): {
+        "cashback_type": "points",
+    },
     ("ctbc_c_uniopen", "overseas_general"): {
         "cashback_rate": 0.11,
+        "cashback_type": "points",
         "cashback_description": "國外實體商店最高11% OPENPOINT（基本3% + 指定地區/活動加碼8%）",
     },
 }
@@ -78,6 +82,9 @@ def _apply_condition_warnings(card_id: str, channels: list[dict]) -> list[dict]:
     """
     for ch in channels:
         key = (card_id, ch.get("channel_id", ""))
+        description = ch.get("cashback_description") or ""
+        if key == ("ctbc_c_hanshin", "general") and "館外一般消費" in description:
+            continue
         if key in _CONDITION_WARNINGS and not (ch.get("conditions") or "").strip():
             ch["conditions"] = _CONDITION_WARNINGS[key]
     return channels
@@ -88,6 +95,24 @@ def _load_json(path: Path) -> dict:
         return json.load(f)
 
 
+def _is_plain_general_reward(channel: dict) -> bool:
+    """Return true for base general-spend rewards, not campaign/venue maxima."""
+    if channel.get("channel_id") != "general":
+        return False
+
+    description = str(channel.get("cashback_description") or "").lower()
+    plain_keywords = ("一般消費", "國內一般", "國內外一般", "館外一般消費")
+    if not any(keyword in description for keyword in plain_keywords):
+        return False
+
+    campaign_keywords = (
+        "最高", "指定", "加碼", "登錄", "限量", "活動", "影城",
+        "店內", "館內", "百貨", "商店", "平台", "禮券", "即享券",
+        "pay",
+    )
+    return not any(keyword.lower() in description for keyword in campaign_keywords)
+
+
 def _dedup_channels(channels: list[dict]) -> list[dict]:
     """
     對同一 channel_id 的多筆條目去重。
@@ -95,16 +120,19 @@ def _dedup_channels(channels: list[dict]) -> list[dict]:
     card_feature_scraper 會把頁面上每段行銷文案都當作獨立條目，
     造成同一 channel_id 出現 10+ 筆。去重策略：
     - 同 channel_id + 同 cashback_type 取 cashback_rate 最高者
+    - general 通路額外區分「一般消費基本回饋」與「指定活動最高回饋」，
+      避免低倍率基本回饋被高倍率行銷活動吃掉。
     - 不同 cashback_type（如 cash vs points）各保留一筆最佳
     - cashback_rate 為 None 的條目被有值的條目取代
     """
-    # key: (channel_id, cashback_type) → best entry
-    best: dict[tuple[str, str], dict] = {}
+    # key: (channel_id, cashback_type, general_kind) → best entry
+    best: dict[tuple[str, str, str], dict] = {}
     for ch in channels:
         cid = ch.get("channel_id", "")
         ctype = ch.get("cashback_type", "cash")
         rate = ch.get("cashback_rate") or 0.0
-        key = (cid, ctype)
+        general_kind = "plain_general" if _is_plain_general_reward(ch) else "specific_or_campaign"
+        key = (cid, ctype, general_kind if cid == "general" else "")
         existing = best.get(key)
         if existing is None:
             best[key] = ch

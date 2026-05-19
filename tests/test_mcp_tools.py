@@ -364,6 +364,7 @@ class TestRecommendPayment:
     @pytest.mark.parametrize("text,expected_channels", [
         ("去7-11買東西", ["7-ELEVEN"]),
         ("我現在在 7-ELEVEN 結帳", ["7-ELEVEN"]),
+        ("日本實體店刷卡", ["overseas_general"]),
         ("全聯買菜", ["全聯"]),
         ("蝦皮購物", ["蝦皮"]),
         ("foodpanda外送", ["foodpanda"]),
@@ -600,6 +601,7 @@ class TestAccuracy:
         """7-ELEVEN 查詢不可拿非超商活動的一般通路行銷文案計算回饋。"""
         result = search_by_channel("7-ELEVEN", cards_owned=ALL_CARD_IDS, amount=350, top_k=8)
         assert result["error"] is None
+        assert len(result["results"]) >= 3
 
         descriptions = [r["cashback_description"] for r in result["results"]]
         assert not any("大巨蛋秀泰" in desc for desc in descriptions)
@@ -638,6 +640,32 @@ class TestAccuracy:
         descriptions = [r["cashback_description"] for r in result["results"]]
         assert not any("最高享16%回饋" in desc for desc in descriptions)
         assert not any("大巨蛋秀泰" in desc for desc in descriptions)
+
+    def test_specific_transport_merchant_excludes_unrelated_transit_offer(self):
+        """高鐵查詢不可拿日本交通儲值優惠排序。"""
+        result = search_by_channel("高鐵", cards_owned=ALL_CARD_IDS, amount=1500, top_k=5)
+        assert result["error"] is None
+        assert result["results"][0]["card_id"] in {"fubon_c_costco", "fubon_c_momo"}
+
+        descriptions = [r["cashback_description"] for r in result["results"]]
+        assert not any("Suica" in desc or "PASMO" in desc or "ICOCA" in desc for desc in descriptions)
+
+    def test_specific_mobile_payment_excludes_other_payment_tools(self):
+        """LINE Pay 查詢不可拿 icash Pay 或 AI 工具訂閱優惠排序。"""
+        result = search_by_channel("LINE Pay", cards_owned=ALL_CARD_IDS, amount=500, top_k=5)
+        assert result["error"] is None
+
+        descriptions = [r["cashback_description"] for r in result["results"]]
+        assert not any("icash Pay" in desc for desc in descriptions)
+        assert not any("AI 工具" in desc for desc in descriptions)
+
+    def test_specific_dining_merchant_excludes_department_store_dining(self):
+        """麥當勞查詢不可拿百貨館內餐飲優惠排序。"""
+        result = search_by_channel("麥當勞", cards_owned=ALL_CARD_IDS, amount=300, top_k=5)
+        assert result["error"] is None
+
+        descriptions = [r["cashback_description"] for r in result["results"]]
+        assert not any("SOGO" in desc or "館內" in desc or "店內餐飲" in desc for desc in descriptions)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

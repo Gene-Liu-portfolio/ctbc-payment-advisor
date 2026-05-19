@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "description": "合併自 ctbc_cards + fubon_cards + card_features + microsite_deals",
-  "last_updated": "2026-05-15",
+  "last_updated": "2026-05-19",
   "merge_sources": {
     "ctbc_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/ctbc_cards.json",
     "fubon_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/fubon_cards.json",
@@ -93,6 +93,15 @@
           "conditions": "⚠️ 最高 3% 僅限漢神洲際館內消費（1% 基本回饋 + 2% 館內加碼），館外一般消費不適用加碼，且加碼回饋設有每月上限。",
           "valid_end": null,
           "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.005,
+          "cashback_type": "cash",
+          "cashback_description": "館外一般消費0.5%回饋說明",
+          "conditions": "",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
         }
       ]
     },
@@ -120,8 +129,17 @@
         {
           "channel_id": "general",
           "cashback_rate": 0.11,
-          "cashback_type": "cash",
+          "cashback_type": "points",
           "cashback_description": "免領券，消費天天最高雙11% OPENPOINT",
+          "conditions": "⚠️ 最高 11% 需同時達成：①基本消費 1% + ②綁定 icash Pay 加碼 4% + ③指定統一集團多品牌消費加碼回饋，一般刷卡消費僅有基本回饋約 1–3%。",
+          "valid_end": null,
+          "data_source": "card_feature_direct"
+        },
+        {
+          "channel_id": "general",
+          "cashback_rate": 0.01,
+          "cashback_type": "points",
+          "cashback_description": "國內一般消費1%",
           "conditions": "⚠️ 最高 11% 需同時達成：①基本消費 1% + ②綁定 icash Pay 加碼 4% + ③指定統一集團多品牌消費加碼回饋，一般刷卡消費僅有基本回饋約 1–3%。",
           "valid_end": null,
           "data_source": "card_feature_direct"
@@ -138,7 +156,7 @@
         {
           "channel_id": "overseas_general",
           "cashback_rate": 0.11,
-          "cashback_type": "cash",
+          "cashback_type": "points",
           "cashback_description": "國外實體商店最高11% OPENPOINT（基本3% + 指定地區/活動加碼8%）",
           "conditions": "⚠️ 最高 11% 為國外實體商店消費基本 3% + 指定地區/活動加碼 8%。加碼通常需登入中信銀行 APP 領券並連結 uniopen 會員，且加碼回饋有每月上限；網路交易、條碼支付或第三方支付不適用國外實體商店加碼。",
           "valid_end": null,
@@ -3041,18 +3059,6 @@
           "conditions": "限綁定卡片並使用LINE Pay 支付",
           "valid_start": "2026-01-01",
           "valid_end": "2026-12-31",
-          "channel_id": "general",
-          "detail_url": "javascript:void(0);",
-          "source_page": "page_life"
-        },
-        {
-          "merchant": "STUDIO A",
-          "payment_method": "",
-          "benefit": "最高LINE POINTS 10%",
-          "cashback_rate": 0.1,
-          "conditions": "全臺指定門市/官網 單筆滿額享回饋",
-          "valid_start": "2026-04-25",
-          "valid_end": "2026-05-17",
           "channel_id": "general",
           "detail_url": "javascript:void(0);",
           "source_page": "page_life"

@@ -51,6 +51,7 @@ _QUICK_CHANNEL_MAP: list[tuple[str, str]] = [
     (r"星巴克|starbucks", "星巴克"),
     (r"路易莎|louisa", "路易莎"),
     # 旅遊
+    (r"日本|韓國|海外|國外|境外|日圓|日元|円|jpy", "overseas_general"),
     (r"航空|機票|飛機", "travel"),
     (r"飯店|訂房|agoda|booking", "travel"),
     # 加油
