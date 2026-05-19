@@ -143,10 +143,18 @@ def get_best_channel_for_card(card: dict, channel_id: str) -> Optional[dict]:
     若無匹配則嘗試 general 通路，並標記 is_fallback=True。
     """
     channels = filter_channels_by_id(card, channel_id)
+    if channel_id == "general":
+        channels = [
+            ch for ch in channels
+            if _is_safe_general_fallback(ch, channel_id)
+        ]
     is_fallback = False
 
     if not channels:
-        channels = filter_channels_by_id(card, "general")
+        channels = [
+            ch for ch in filter_channels_by_id(card, "general")
+            if _is_safe_general_fallback(ch, channel_id)
+        ]
         is_fallback = True
     if not channels:
         return None
@@ -159,6 +167,40 @@ def get_best_channel_for_card(card: dict, channel_id: str) -> Optional[dict]:
     best = dict(best)  # 複製避免污染快取物件
     best["is_fallback"] = is_fallback
     return best
+
+
+def _is_safe_general_fallback(channel: dict, requested_channel_id: str) -> bool:
+    """
+    General fallback can only represent plain base spend.
+    Marketing snippets such as "highest 16%" or venue-specific offers must not
+    be used for unrelated merchants when a channel-specific offer is missing.
+    """
+    if channel.get("channel_id") != "general":
+        return False
+
+    description = str(channel.get("cashback_description") or "").lower()
+    conditions = str(channel.get("conditions") or "").lower()
+
+    if not any(keyword in description for keyword in ("一般消費", "國內一般", "國內外一般")):
+        return False
+
+    unsafe_keywords = (
+        "最高", "指定", "加碼", "登錄", "限量", "活動", "影城",
+        "電商", "外送", "平台", "館內", "百貨", "商店", "pay",
+    )
+    if any(keyword.lower() in description for keyword in unsafe_keywords):
+        return False
+
+    excluded_terms_by_channel = {
+        "convenience_store": ("便利商店", "超商", "7-eleven", "7-11", "全家"),
+        "supermarket": ("全聯", "costco", "好市多", "超市", "量販"),
+        "ecommerce": ("網路平台", "電商", "網購"),
+        "mobile_payment": ("行動支付", "電子支付"),
+    }
+    if any(term in conditions for term in excluded_terms_by_channel.get(requested_channel_id, ())):
+        return False
+
+    return True
 
 
 # ── Deals 查詢（原 microsite 促銷，現已合併進卡片的 deals 陣列）──────────────

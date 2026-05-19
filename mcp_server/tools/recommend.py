@@ -24,7 +24,7 @@ _AMOUNT_PATTERN = re.compile(
 # 通路關鍵字（在 channel_mapper 之外做一層快速映射）
 _QUICK_CHANNEL_MAP: list[tuple[str, str]] = [
     # 超商
-    (r"7-?11|小7|seven|統一超商", "7-ELEVEN"),
+    (r"7-?11|7-?eleven|小7|seven|統一超商", "7-ELEVEN"),
     (r"全家|family\s*mart", "全家"),
     (r"萊爾富|hi-?life", "萊爾富"),
     # 超市量販
