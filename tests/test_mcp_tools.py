@@ -268,17 +268,17 @@ class TestSearchByChannel:
             missing = required - set(r.keys())
             assert not missing, f"缺少欄位: {missing}"
 
-    def test_calculation_trace_basic_formula(self):
+    def test_calculation_trace_non_cash_points_formula(self):
         result = search_by_channel("家樂福", cards_owned=["ctbc_c_linepay"], amount=2000)
         trace = result["results"][0]["calculation_trace"]
 
         assert trace["amount"] == 2000
         assert trace["cashback_rate"] == 0.05
-        assert trace["formula"] == "2000 × 5% = 100"
+        assert trace["formula"] == "非現金回饋不換算 NT$ 預估"
         assert trace["raw_cashback"] == 100
         assert trace["cap"] is None
         assert trace["cap_applied"] is False
-        assert trace["final_cashback"] == 100
+        assert trace["final_cashback"] is None
 
     def test_calculation_trace_with_cap(self):
         trace = _build_calculation_trace(
@@ -363,6 +363,7 @@ class TestRecommendPayment:
 
     @pytest.mark.parametrize("text,expected_channels", [
         ("去7-11買東西", ["7-ELEVEN"]),
+        ("我現在在 7-ELEVEN 結帳", ["7-ELEVEN"]),
         ("全聯買菜", ["全聯"]),
         ("蝦皮購物", ["蝦皮"]),
         ("foodpanda外送", ["foodpanda"]),
@@ -594,6 +595,49 @@ class TestAccuracy:
         # 使用 calc 直接測試
         assert calc_estimated_cashback(10000, 0.05, 200) == 200.0
         assert calc_estimated_cashback(1000, 0.05, 200) == 50.0
+
+    def test_711_does_not_use_unrelated_general_marketing_fallback(self):
+        """7-ELEVEN 查詢不可拿非超商活動的一般通路行銷文案計算回饋。"""
+        result = search_by_channel("7-ELEVEN", cards_owned=ALL_CARD_IDS, amount=350, top_k=8)
+        assert result["error"] is None
+
+        descriptions = [r["cashback_description"] for r in result["results"]]
+        assert not any("大巨蛋秀泰" in desc for desc in descriptions)
+        assert not any("最高享16%回饋" in desc for desc in descriptions)
+
+    def test_openpoint_reward_is_not_reported_as_cash_estimate(self):
+        """OPENPOINT 回饋不能被直接顯示成 NT$ 現金預估。"""
+        result = search_by_channel("7-ELEVEN", cards_owned=["ctbc_c_uniopen"], amount=350)
+        assert result["error"] is None
+        assert len(result["results"]) == 1
+
+        option = result["results"][0]
+        assert option["cashback_type"] == "points"
+        assert option["estimated_cashback"] is None
+        assert option["calculation_trace"]["formula"] == "非現金回饋不換算 NT$ 預估"
+
+    def test_general_fallback_excludes_specific_highest_reward_campaigns(self):
+        """無專屬通路時，只能 fallback 到明確一般消費，不可拿指定活動最高回饋。"""
+        result = search_by_channel(
+            "藥妝",
+            cards_owned=["ctbc_c_linepay", "ctbc_c_cs"],
+            amount=350,
+            top_k=5,
+        )
+        assert result["error"] is None
+
+        descriptions = [r["cashback_description"] for r in result["results"]]
+        assert not any("最高享16%回饋" in desc for desc in descriptions)
+        assert not any("大巨蛋秀泰" in desc for desc in descriptions)
+
+    def test_general_query_excludes_specific_highest_reward_campaigns(self):
+        """直接查一般消費時，也不可拿指定活動最高回饋當一般消費。"""
+        result = search_by_channel("一般消費", cards_owned=ALL_CARD_IDS, amount=350, top_k=8)
+        assert result["error"] is None
+
+        descriptions = [r["cashback_description"] for r in result["results"]]
+        assert not any("最高享16%回饋" in desc for desc in descriptions)
+        assert not any("大巨蛋秀泰" in desc for desc in descriptions)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

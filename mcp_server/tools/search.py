@@ -78,12 +78,16 @@ def search_by_channel(
         if deal:
             rate = deal.get("cashback_rate")
             cap  = None
-            est  = calc_estimated_cashback(amount, rate, cap) if amount > 0 else None
+            cashback_type = _normalize_cashback_type(
+                deal.get("cashback_type"),
+                deal.get("benefit", ""),
+            )
+            est  = _estimated_cash_value(amount, rate, cap, cashback_type)
             results.append({
                 "card_id":              card_id,
                 "card_name":            card["card_name"],
                 "cashback_rate":        rate,
-                "cashback_type":        "cash",
+                "cashback_type":        cashback_type,
                 "cashback_description": deal.get("benefit", ""),
                 "estimated_cashback":   est,
                 "max_cashback_per_period": cap,
@@ -94,7 +98,7 @@ def search_by_channel(
                 "payment_method":       deal.get("payment_method", ""),
                 "data_source":          "microsite",
                 "is_fallback":          False,
-                "calculation_trace":    _build_calculation_trace(amount, rate, cap, est),
+                "calculation_trace":    _build_calculation_trace(amount, rate, cap, est, cashback_type),
             })
             continue
 
@@ -105,13 +109,17 @@ def search_by_channel(
 
         rate = best_ch.get("cashback_rate")
         cap  = best_ch.get("max_cashback_per_period")
-        est  = calc_estimated_cashback(amount, rate, cap) if amount > 0 else None
+        cashback_type = _normalize_cashback_type(
+            best_ch.get("cashback_type", "cash"),
+            best_ch.get("cashback_description", ""),
+        )
+        est  = _estimated_cash_value(amount, rate, cap, cashback_type)
 
         results.append({
             "card_id":              card_id,
             "card_name":            card["card_name"],
             "cashback_rate":        rate,
-            "cashback_type":        best_ch.get("cashback_type", "cash"),
+            "cashback_type":        cashback_type,
             "cashback_description": best_ch.get("cashback_description", ""),
             "estimated_cashback":   est,
             "max_cashback_per_period": cap,
@@ -120,7 +128,7 @@ def search_by_channel(
             "conditions":           best_ch.get("conditions", ""),
             "data_source":          best_ch.get("data_source", "api"),
             "is_fallback":          best_ch.get("is_fallback", False),
-            "calculation_trace":    _build_calculation_trace(amount, rate, cap, est),
+            "calculation_trace":    _build_calculation_trace(amount, rate, cap, est, cashback_type),
         })
 
     # 排序：預估回饋↓ → 回饋率↓
@@ -202,17 +210,49 @@ def _format_rate(rate: float | None) -> str:
     return f"{rate * 100:g}%"
 
 
+def _normalize_cashback_type(raw_type: str | None, description: str) -> str:
+    text = f"{raw_type or ''} {description or ''}".lower()
+    if "等效" in text:
+        return "cash"
+    point_keywords = (
+        "openpoint", "open point", "line points", "line point",
+        "sogo金", "點數", "紅利",
+    )
+    if any(keyword.lower() in text for keyword in point_keywords):
+        return "points"
+    if "哩程" in text or "里程" in text or "mile" in text:
+        return "miles"
+    return raw_type or "cash"
+
+
+def _estimated_cash_value(
+    amount: float,
+    cashback_rate: float | None,
+    cap: int | float | None,
+    cashback_type: str,
+) -> float | None:
+    if amount <= 0:
+        return None
+    if cashback_type != "cash":
+        return None
+    return calc_estimated_cashback(amount, cashback_rate, cap)
+
+
 def _build_calculation_trace(
     amount: float,
     cashback_rate: float | None,
     cap: int | float | None,
     estimated_cashback: float | None,
+    cashback_type: str = "cash",
 ) -> dict:
     raw_cashback = None
     cap_applied = False
     formula = "未計算預估回饋"
 
-    if amount > 0 and cashback_rate and cashback_rate > 0:
+    if amount > 0 and cashback_rate and cashback_rate > 0 and cashback_type != "cash":
+        raw_cashback = round(amount * cashback_rate, 1)
+        formula = "非現金回饋不換算 NT$ 預估"
+    elif amount > 0 and cashback_rate and cashback_rate > 0:
         raw_cashback = round(amount * cashback_rate, 1)
         amount_text = _format_amount(amount)
         rate_text = _format_rate(cashback_rate)
@@ -226,6 +266,7 @@ def _build_calculation_trace(
     return {
         "amount": amount,
         "cashback_rate": cashback_rate,
+        "cashback_type": cashback_type,
         "formula": formula,
         "raw_cashback": raw_cashback,
         "cap": cap,
