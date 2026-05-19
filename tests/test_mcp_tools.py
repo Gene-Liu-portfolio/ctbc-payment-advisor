@@ -26,6 +26,7 @@ from mcp_server.tools.recommend import recommend_payment, _extract_amount, _extr
 from mcp_server.tools.compare import compare_cards
 from mcp_server.tools.promotions import get_promotions, get_card_details
 from mcp_server.tool_trace import compact_search_result, tool_result_event
+from mcp_server.utils.llm_parser import _VALID_CHANNEL_IDS as LLM_VALID_CHANNEL_IDS
 from mcp_server.utils.data_loader import (
     get_all_cards, get_card_by_id, get_cards_by_ids,
     get_cards_menu, get_best_channel_for_card, get_best_deal_for_card,
@@ -365,6 +366,10 @@ class TestRecommendPayment:
         ("去7-11買東西", ["7-ELEVEN"]),
         ("我現在在 7-ELEVEN 結帳", ["7-ELEVEN"]),
         ("日本實體店刷卡", ["overseas_general"]),
+        ("去好市多買東西", ["COSTCO"]),
+        ("在SOGO百貨消費", ["遠東SOGO"]),
+        ("繳保費", ["insurance"]),
+        ("台灣大哥大繳電信費", ["台灣大哥大"]),
         ("全聯買菜", ["全聯"]),
         ("蝦皮購物", ["蝦皮"]),
         ("foodpanda外送", ["foodpanda"]),
@@ -728,13 +733,34 @@ class TestEdgeCases:
 class TestChannelMapping:
     """驗證常見使用者輸入能正確映射到 channel_id"""
 
+    def test_all_17_channel_ids_are_valid_search_inputs(self):
+        expected = {
+            "convenience_store", "supermarket", "wholesale", "ecommerce",
+            "food_delivery", "transport", "dining", "travel", "entertainment",
+            "gas_station", "pharmacy", "mobile_payment", "department_store",
+            "insurance", "telecom", "general", "overseas_general",
+        }
+
+        for channel_id in expected:
+            result = search_by_channel(channel_id, cards_owned=["fubon_c_costco"], amount=100)
+            assert result["channel_id"] == channel_id
+
+    def test_llm_parser_accepts_all_17_channel_ids(self):
+        assert set(LLM_VALID_CHANNEL_IDS) == {
+            "convenience_store", "supermarket", "wholesale", "ecommerce",
+            "food_delivery", "transport", "dining", "travel", "entertainment",
+            "gas_station", "pharmacy", "mobile_payment", "department_store",
+            "insurance", "telecom", "general", "overseas_general",
+        }
+
     @pytest.mark.parametrize("input_text,expected_cid", [
         ("711", "convenience_store"),
         ("7-11", "convenience_store"),
         ("全家", "convenience_store"),
         ("全聯", "supermarket"),
         ("家樂福", "supermarket"),
-        ("好市多", "supermarket"),  # channel_mapper 將 COSTCO 映射到 supermarket
+        ("好市多", "wholesale"),
+        ("COSTCO", "wholesale"),
         ("蝦皮", "ecommerce"),
         ("momo", "ecommerce"),
         ("foodpanda", "food_delivery"),
@@ -745,6 +771,12 @@ class TestChannelMapping:
         ("星巴克", "dining"),
         ("加油", "gas_station"),
         ("屈臣氏", "pharmacy"),
+        ("百貨", "department_store"),
+        ("SOGO", "department_store"),
+        ("保費", "insurance"),
+        ("保險費", "insurance"),
+        ("電信費", "telecom"),
+        ("台灣大哥大", "telecom"),
         ("overseas_general", "overseas_general"),
         ("convenience_store", "convenience_store"),
     ])
@@ -752,3 +784,14 @@ class TestChannelMapping:
         result = search_by_channel(input_text, cards_owned=["fubon_c_j"], amount=100)
         assert result["channel_id"] == expected_cid, \
             f"'{input_text}' 應映射到 '{expected_cid}'，實際得到 '{result['channel_id']}'"
+
+    @pytest.mark.parametrize("input_text,expected_cid", [
+        ("wholesale", "wholesale"),
+        ("department_store", "department_store"),
+        ("insurance", "insurance"),
+        ("telecom", "telecom"),
+    ])
+    def test_compare_cards_accepts_extended_channel_ids(self, input_text, expected_cid):
+        result = compare_cards(cards_owned=["fubon_c_costco"], channel=input_text, amount=100)
+        assert result["error"] is None
+        assert result["channel_filter"] == expected_cid

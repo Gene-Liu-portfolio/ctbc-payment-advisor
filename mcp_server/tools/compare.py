@@ -15,6 +15,7 @@ from .search import _resolve_channel, _CHANNEL_NAMES
 _ALL_CHANNEL_IDS = [
     "convenience_store",
     "supermarket",
+    "wholesale",
     "ecommerce",
     "food_delivery",
     "dining",
@@ -24,7 +25,11 @@ _ALL_CHANNEL_IDS = [
     "entertainment",
     "gas_station",
     "pharmacy",
+    "department_store",
+    "insurance",
+    "telecom",
     "general",
+    "overseas_general",
 ]
 
 

@@ -82,9 +82,10 @@ def search_by_channel(
     這是「主力查詢工具」—— 使用者一旦提到任何具體消費場景就應該優先呼叫此工具。
     一次只能查一個通路；若使用者問題涉及多個通路（如「全聯和星巴克」），請分別多次呼叫。
 
-    ▎channel 參數請從以下 13 個 channel_id 擇一（標準 id 優先於商家名稱）：
+    ▎channel 參數請從以下 17 個 channel_id 擇一（標準 id 優先於商家名稱）：
     - "convenience_store" — 超商：7-11、全家、萊爾富、OK
-    - "supermarket"       — 超市／量販：全聯、家樂福、大潤發、好市多
+    - "supermarket"       — 超市／量販：全聯、家樂福、大潤發
+    - "wholesale"         — 量販倉儲：Costco 好市多
     - "ecommerce"         — 電商：蝦皮、momo、PChome、Yahoo 購物
     - "food_delivery"     — 外送：Uber Eats、foodpanda
     - "transport"         — 交通：高鐵、台鐵、捷運、悠遊卡、計程車
@@ -94,6 +95,9 @@ def search_by_channel(
     - "gas_station"       — 加油站：中油、台塑
     - "pharmacy"          — 藥妝：屈臣氏、康是美、寶雅（國內）
     - "mobile_payment"    — 行動支付：LINE Pay、Apple Pay、街口、悠遊付
+    - "department_store"  — 百貨公司：遠東SOGO、新光三越、統一時代百貨、微風、漢神
+    - "insurance"         — 保費：壽險、產險、健康險、汽車保險
+    - "telecom"           — 電信費：台灣大哥大、中華電信、遠傳
     - "general"           — 一般消費（找不到對應通路才用）
     - "overseas_general"  — 海外消費（國外刷卡，含實體店與境外網購）
 
@@ -107,6 +111,10 @@ def search_by_channel(
 
     ▎範例對應
     - 「全聯買菜」→ channel="supermarket"
+    - 「好市多買東西」→ channel="wholesale"
+    - 「SOGO百貨消費」→ channel="department_store"
+    - 「繳保費」→ channel="insurance"
+    - 「台灣大哥大繳費」→ channel="telecom"
     - 「日本買藥妝 3000 日圓」→ channel="overseas_general"（不是 pharmacy）
     - 「台灣屈臣氏買面膜」→ channel="pharmacy"
     - 「用 LINE Pay 在 momo 買東西」→ 兩次：channel="mobile_payment" 與 channel="ecommerce"

@@ -65,6 +65,10 @@ _QUICK_CHANNEL_MAP: list[tuple[str, str]] = [
     (r"街口", "街口支付"),
     (r"apple\s*pay", "Apple Pay"),
     (r"google\s*pay", "Google Pay"),
+    # 百貨／保費／電信
+    (r"sogo|遠東sogo|百貨|新光三越|統一時代|微風|漢神百貨", "遠東SOGO"),
+    (r"保費|保險費|壽險|產險|健康險|汽車保險", "insurance"),
+    (r"電信費|電話費|手機費|台灣大哥大|台哥大|中華電信|遠傳", "台灣大哥大"),
 ]
 
 

@@ -21,8 +21,9 @@ MERCHANT_TO_CHANNEL: dict[str, str] = {
     "家樂福":        "supermarket",
     "大潤發":        "supermarket",
     "愛買":          "supermarket",
-    "COSTCO":       "supermarket",
     "頂好":          "supermarket",
+    # 量販倉儲
+    "COSTCO":       "wholesale",
     # 電商
     "蝦皮":          "ecommerce",
     "momo購物":      "ecommerce",
@@ -85,6 +86,17 @@ MERCHANT_TO_CHANNEL: dict[str, str] = {
     "Apple Pay":    "mobile_payment",
     "Google Pay":   "mobile_payment",
     "Samsung Pay":  "mobile_payment",
+    # 百貨公司
+    "遠東SOGO":      "department_store",
+    "新光三越":      "department_store",
+    "統一時代百貨":  "department_store",
+    "微風廣場":      "department_store",
+    "漢神百貨":      "department_store",
+    # 電信費
+    "台灣大哥大":    "telecom",
+    "中華電信":      "telecom",
+    "遠傳電信":      "telecom",
+    "台灣之星":      "telecom",
 }
 
 # ── 各種輸入變體 → 標準商家名稱 ─────────────────────────────────────────────
@@ -165,6 +177,14 @@ _SYNONYMS: dict[str, str] = {
     # Apple/Google/Samsung Pay
     "applepay": "Apple Pay", "googlepay": "Google Pay",
     "g pay": "Google Pay", "samsungpay": "Samsung Pay",
+    # 百貨公司
+    "sogo": "遠東SOGO", "遠東sogo": "遠東SOGO",
+    "新光": "新光三越", "新光三越百貨": "新光三越",
+    "統一時代": "統一時代百貨", "微風": "微風廣場",
+    "漢神": "漢神百貨",
+    # 電信費
+    "台哥大": "台灣大哥大", "台灣大": "台灣大哥大",
+    "中華電信費": "中華電信", "遠傳": "遠傳電信",
 }
 
 # ── 使用者輸入 channel 關鍵字 → channel_id ──────────────────────────────────
@@ -173,6 +193,9 @@ _CATEGORY_KEYWORDS: dict[str, str] = {
     "超商": "convenience_store", "便利商店": "convenience_store",
     # supermarket
     "超市": "supermarket", "量販": "supermarket", "大賣場": "supermarket",
+    # wholesale
+    "量販倉儲": "wholesale", "倉儲賣場": "wholesale", "好市多": "wholesale",
+    "costco": "wholesale",
     # ecommerce
     "電商": "ecommerce", "網購": "ecommerce", "線上購物": "ecommerce",
     "網路商城": "ecommerce",
@@ -198,6 +221,15 @@ _CATEGORY_KEYWORDS: dict[str, str] = {
     "藥妝": "pharmacy", "藥局": "pharmacy",
     # mobile_payment
     "行動支付": "mobile_payment", "電子支付": "mobile_payment",
+    # department_store
+    "百貨": "department_store", "百貨公司": "department_store", "百貨專櫃": "department_store",
+    # insurance
+    "保費": "insurance", "保險費": "insurance", "壽險": "insurance",
+    "產險": "insurance", "健康險": "insurance", "汽車保險": "insurance",
+    # telecom
+    "電信": "telecom", "電信費": "telecom", "電話費": "telecom",
+    "手機費": "telecom", "台哥大": "telecom", "中華電信": "telecom",
+    "遠傳": "telecom",
     # general
     "一般": "general", "一般消費": "general", "其他": "general",
     "國內消費": "general", "海外消費": "general",

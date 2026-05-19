@@ -158,13 +158,17 @@ def get_card_details(card_id: str) -> dict:
 
 _CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "convenience_store": ["超商", "7-11", "全家", "萊爾富"],
-    "supermarket":       ["超市", "量販", "全聯", "家樂福", "COSTCO"],
+    "supermarket":       ["超市", "量販", "全聯", "家樂福"],
+    "wholesale":         ["量販倉儲", "好市多", "COSTCO"],
     "ecommerce":         ["電商", "網購", "蝦皮", "momo", "PChome"],
     "food_delivery":     ["外送", "foodpanda", "Uber Eats"],
     "transport":         ["交通", "捷運", "高鐵", "台鐵"],
     "dining":            ["餐飲", "餐廳", "美食", "咖啡"],
     "travel":            ["旅遊", "機票", "飯店", "航空"],
     "mobile_payment":    ["行動支付", "LINE Pay", "街口", "Apple Pay"],
+    "department_store":  ["百貨", "SOGO", "新光三越", "統一時代百貨", "微風", "漢神"],
+    "insurance":         ["保費", "保險費", "壽險", "產險"],
+    "telecom":           ["電信", "電信費", "台灣大哥大", "中華電信", "遠傳"],
     "entertainment":     ["娛樂", "電影", "KTV"],
     "gas_station":       ["加油", "中油", "台塑"],
     "pharmacy":          ["藥妝", "屈臣氏", "康是美"],

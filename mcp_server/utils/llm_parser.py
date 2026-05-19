@@ -24,9 +24,10 @@ REASONER_MODEL = os.getenv("CLAUDE_REASONER_MODEL", "claude-haiku-4-5-20251001")
 
 # 合法 channel_id（與 search.py:_VALID_CHANNEL_IDS 同步）
 _VALID_CHANNEL_IDS = [
-    "convenience_store", "supermarket", "ecommerce", "food_delivery",
-    "transport", "dining", "travel", "entertainment", "gas_station",
-    "pharmacy", "mobile_payment", "general", "overseas_general",
+    "convenience_store", "supermarket", "wholesale", "ecommerce",
+    "food_delivery", "transport", "dining", "travel", "entertainment",
+    "gas_station", "pharmacy", "mobile_payment", "department_store",
+    "insurance", "telecom", "general", "overseas_general",
 ]
 
 
@@ -112,6 +113,10 @@ _PARSER_SYSTEM = """你是中文消費情境解析器。先判斷使用者輸入
   - 「出國買機票」「訂飯店」→ travel（票券本身在國內買）
   - 「出國刷卡買東西」「日本買藥妝」→ overseas_general（消費發生在國外）
   - 商家名（7-11、全聯、momo、UberEats…）→ 對應 channel_id
+  - 「好市多 / Costco」→ wholesale
+  - 「百貨 / SOGO / 新光三越」→ department_store
+  - 「保費 / 保險費」→ insurance
+  - 「電信費 / 台灣大哥大 / 中華電信」→ telecom
   - 同時提到多個通路時全部列出
   - 是消費問題但找不到明確通路 → general
 - 金額：抓最具體的數字，無金額則填 0

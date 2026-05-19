@@ -2,9 +2,9 @@
 
 **中國信託 × 台北富邦 信用卡支付建議系統**
 
-基於 **React × Claude × MCP（Model Context Protocol）** 架構的智慧刷卡建議服務。React 前端透過 Anthropic **MCP Connector** 讓 Claude 直接以 MCP 協定呼叫工具（非 function-calling 包裝），從使用者持有的 **13 張熱門信用卡**（中信 6 + 富邦 7）中推薦最佳刷卡選擇。
+基於 **React × Claude × MCP（Model Context Protocol）** 架構的智慧刷卡建議服務。React 前端可透過 structured SSE 呼叫一般推薦流程，也可透過 Anthropic **MCP Connector** 讓 Claude 直接以 MCP 協定呼叫工具（非 function-calling 包裝），從使用者持有的 **13 張熱門信用卡**（中信 6 + 富邦 7）中推薦最佳刷卡選擇。
 
-> 資料版本：2026-05-02 | 架構版本：v8.0（React-only + MCP Connector）
+> 資料版本：2026-05-19 | 架構版本：v8.1（Structured SSE + MCP Connector）
 
 ---
 
@@ -12,11 +12,11 @@
 
 - **單一前端（React）** — Vite + React 18 + Tailwind 4 + Radix UI 統一 demo 介面
 - **真 MCP 協定整合** — Claude API 透過 `mcp_servers` 參數直接連 `/mcp`，前端可即時看到 Claude 呼叫了哪些工具
-- **多輪對話 + SSE 串流** — `/api/chat` 以 Server-Sent Events 即時推送文字增量與 tool_use 事件
+- **雙模式 SSE 串流** — `/api/recommend/stream` 提供一般推薦流程；`/api/chat` 提供 Claude Agent 對話與 tool_use 事件
 - **情境推薦** — 輸入「去全聯買菜 1500 元」，自動推薦最優卡與預估回饋
 - **多通路解析** — 一次輸入可辨識多個通路（如全聯 + foodpanda），分別推薦
 - **持卡比較 / 優惠查詢 / 單卡詳情** — 透過 chat 自然觸發對應 MCP 工具
-- **海外消費辨識** — 由 Claude 自行判斷後呼叫 `overseas_general` 通路
+- **海外消費辨識** — Claude 解析與 deterministic fallback 均可識別 `overseas_general`
 - **回饋種類區分** — 現金 / LINE Points / OPENPOINT / 哩程 / 紅利點數
 - **優惠到期提醒** — `expiring_soon` 自動標記，Claude 會主動提醒
 
@@ -40,11 +40,11 @@
 | Card ID | 卡名 |
 |---------|------|
 | `fubon_c_j` | 富邦J卡 |
-| `fubon_c_j_travel` | 富邦J Travel卡 |
-| `fubon_c_costco` | 富邦Costco聯名卡 |
 | `fubon_c_diamond` | 富邦鑽保卡 |
-| `fubon_c_momo` | 富邦momo卡 |
 | `fubon_b_lifestyle` | 富邦富利生活卡 |
+| `fubon_c_costco` | 富邦Costco聯名卡 |
+| `fubon_c_guardians` | 富邦悍將勇士聯名卡 |
+| `fubon_c_momo` | 富邦momo聯名卡 |
 | `fubon_c_twm` | 台灣大哥大Open Possible聯名卡 |
 
 ### 卡片 JSON 欄位說明
@@ -95,50 +95,55 @@
 
 ## Architecture
 
-![System Architecture](./system_architecture_professional.png)
-
 <details>
-<summary>📐 ASCII diagram（純文字版）</summary>
+<summary>Current backend flow</summary>
 
 ```
-  Frontend (Browser)              Backend (Unified ASGI)               Anthropic Cloud
-┌─────────────────────┐      ┌────────────────────────────┐      ┌──────────────────┐
-│  React Web Demo     │      │  mcp_server/http_app.py    │      │   Claude API     │
-│  Vite + Radix + TW  │      │  (Starlette + uvicorn)     │      │  Sonnet 4.6      │
-│                     │ POST │                            │      │                  │
-│  ChatInput  ──────────────>│  /api/chat (SSE stream) ───────────────> messages    │
-│  ChatMessage <─ SSE ───────│   ↑       mcp_servers=[                  .stream()   │
-│   ├─ text deltas   │       │   │         {url:/mcp}]                  betas=[...] │
-│   └─ tool_use chips│       │   └─ relay events back ◄───────────  tool_use blocks │
-│                     │      │                            │              │          │
-│  REST 直連（fallback）── ──>│  /api/cards /api/search   │              │          │
-│                     │      │  /api/recommend /api/...   │              ▼          │
-└─────────────────────┘      │                            │      ┌──────────────────┐
-                             │  /mcp (FastMCP Streamable) │<─────│  MCP Connector   │
-                             │   ├─ search_by_channel     │      │ (Anthropic 端)   │
-                             │   ├─ recommend_payment     │      │  tools/list      │
-                             │   ├─ compare_cards         │      │  tools/call      │
-                             │   ├─ get_promotions        │      └──────────────────┘
-                             │   ├─ get_card_details      │
-                             │   ├─ list_all_cards        │
-                             │   └─ reload_data           │
-                             └────────────┬───────────────┘
-                                          ▼
-                                  ┌───────────────────┐
-                                  │ data/processed/   │
-                                  │  merged_cards.json│
-                                  │  promotions.json  │
-                                  │  channels.json    │
-                                  └───────────────────┘
+User input
+├─ General recommendation mode
+│  POST /api/recommend/stream
+│  ├─ parse_scenario()        Claude Haiku or regex fallback
+│  ├─ search_by_channel()     core ranking tool
+│  ├─ get_card_details()      conditions and limits
+│  ├─ get_promotions()        active promos and expiry reminders
+│  ├─ generate_reasons()      Chinese explanation
+│  └─ SSE result              recommendations[].best_options[]
+│
+└─ Agent chat mode
+   POST /api/chat
+   └─ Claude Sonnet
+      └─ MCP Connector
+         └─ /mcp Streamable HTTP
+            └─ FastMCP tools
+               ├─ search_by_channel
+               ├─ recommend_payment
+               ├─ compare_cards
+               ├─ get_card_details
+               └─ get_promotions
+
+Shared runtime layer
+├─ channel_mapper.py
+├─ data_loader.py
+├─ calculator.py
+├─ llm_parser.py
+└─ tool_trace.py
+   └─ data/processed/merged_cards.json
+      ├─ deals[]      merchant-level offers
+      └─ channels[]   channel-level offers
+
+Build-time data flow
+scraper/merge.py ──> data/processed/merged_cards.json
 ```
 
 </details>
 
 **Key Design Decisions:**
 
+- **一般推薦模式不經過 Sonnet Agent** — `/api/recommend/stream` 由後端固定執行 parse → search → details → promotions → reasons，前端以 structured SSE 顯示每一步
 - **真 MCP Connector**（非 function calling）— `/api/chat` 後端呼叫 `anthropic.beta.messages.stream(mcp_servers=[...])`，Claude 直接以 MCP JSON-RPC 連 `/mcp`，前端零侵入即可看到 `tool_use` 事件
 - **Unified ASGI app** — REST API、SSE chat、MCP Streamable HTTP 全部由同一個 Starlette + uvicorn 提供（port 8000），方便 Render 單服務部署
 - **Build-time merge** — 三層資料（API + card_features + microsite_deals）在 build time 合併為 `merged_cards.json`，runtime 只需查兩層
+- **推薦防呆規則** — 具體商家會使用 `merchant_hint` 精準比對；非現金點數不換算 NT$；`general` fallback 只採安全的一般消費基礎回饋
 - **System prompt 強制 cards_owned 範圍** — Claude 自行呼叫工具，但 prompt 嚴格規定 `cards_owned` 參數只能用使用者勾選的 card_id；超出範圍視為違規
 
 ---
@@ -179,6 +184,7 @@ python -m mcp_server.http_app
 
 端點：
 - `GET  /api/cards` — 卡片清單
+- `POST /api/recommend/stream` — 一般推薦模式 structured SSE
 - `POST /api/chat` — Claude SSE 串流（透過 MCP Connector 呼叫工具）
 - `POST /api/{search,compare,promotions,card-details}` — REST deterministic 查詢
 - `POST /api/recommend` — 情境推薦（Claude Haiku 輔助解析情境與產生理由；失敗時 regex fallback）

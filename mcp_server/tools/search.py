@@ -158,9 +158,10 @@ def search_by_channel(
 # ── 內部工具 ──────────────────────────────────────────────────────────────────
 
 _VALID_CHANNEL_IDS = {
-    "convenience_store", "supermarket", "ecommerce", "food_delivery",
-    "transport", "dining", "travel", "entertainment", "gas_station",
-    "pharmacy", "mobile_payment", "general", "overseas_general",
+    "convenience_store", "supermarket", "wholesale", "ecommerce",
+    "food_delivery", "transport", "dining", "travel", "entertainment",
+    "gas_station", "pharmacy", "mobile_payment", "department_store",
+    "insurance", "telecom", "general", "overseas_general",
 }
 
 
@@ -179,6 +180,7 @@ def _resolve_channel(raw: str) -> str:
 _CHANNEL_NAMES = {
     "convenience_store": "超商",
     "supermarket":       "超市／量販",
+    "wholesale":         "量販倉儲",
     "ecommerce":         "電商",
     "food_delivery":     "外送",
     "transport":         "交通",
@@ -188,6 +190,9 @@ _CHANNEL_NAMES = {
     "gas_station":       "加油站",
     "pharmacy":          "藥妝",
     "mobile_payment":    "行動支付",
+    "department_store":  "百貨公司",
+    "insurance":         "保費",
+    "telecom":           "電信費",
     "general":           "一般消費",
     "overseas_general":  "海外消費",
 }
