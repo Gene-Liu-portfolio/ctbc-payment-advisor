@@ -22,6 +22,20 @@
 
 ---
 
+## Why MCP
+
+本專案採用 MCP（Model Context Protocol）不是為了把工具呼叫換一種包裝，而是把「推薦邏輯、資料來源、限制條件」固定在銀行可控的後端服務中。Claude 負責理解使用者問題與選擇工具；實際可查哪些卡、可用哪些通路、怎麼計算回饋，仍由 `/mcp` 與 deterministic tool runtime 控制。
+
+這個設計帶來三個專案價值：
+
+- **推薦結果更可靠** — MCP 工具只從 `merged_cards.json`、通路對應表與後端計算邏輯取資料，降低 LLM 自行補卡片、補優惠或補回饋率的風險。
+- **更容易接進銀行既有數位渠道** — `/mcp` 是標準工具介面，同一套能力未來可提供給 Claude API、內部客服工具、行動銀行、網銀或其他 MCP client，不需要為每個入口重寫 function schema。
+- **核心規則留在 bank-owned backend** — 推薦排序、資料更新、優惠條件、fallback 規則都在後端維護；prompt 只負責引導 Claude 何時呼叫工具，不承擔資料真實性的責任。
+
+`cards_owned` 也由前端 session 注入，而不是交給 LLM 自行填寫。使用者勾選的持卡清單是權限邊界：Claude 可以解讀需求、選擇工具，但工具收到的 `cards_owned` 必須固定等於使用者實際持有的 card_id 清單。這能避免推薦未持有卡，並讓前端狀態、後端查詢與未來銀行登入 session 保持一致。
+
+---
+
 ## Supported Cards（13 張）
 
 **中信銀行（CTBC）**
@@ -114,12 +128,12 @@ User input
    └─ Claude Sonnet
       └─ MCP Connector
          └─ /mcp Streamable HTTP
-            └─ FastMCP tools
-               ├─ search_by_channel
-               ├─ recommend_payment
-               ├─ compare_cards
-               ├─ get_card_details
-               └─ get_promotions
+            └─ FastMCP tools/resources
+               ├─ tools: search_by_channel, recommend_payment, compare_cards
+               ├─ tools: get_card_details, get_promotions
+               ├─ tools: list_all_cards, reload_data
+               ├─ resource: card://ctbc/{card_id}
+               └─ resource: channels://ctbc/all
 
 Shared runtime layer
 ├─ channel_mapper.py
@@ -137,14 +151,28 @@ scraper/merge.py ──> data/processed/merged_cards.json
 
 </details>
 
+### MCP Tools
+
+| Tool / Resource | 負責內容 |
+|-----------------|----------|
+| `search_by_channel` | 單一通路的主力排序工具。依使用者持有卡、通路、金額計算 top cards，並保留 fallback、條件與計算 trace。 |
+| `recommend_payment` | 一站式自然語言推薦。解析情境中的金額與多個通路，再逐一呼叫 `search_by_channel` 產出整體建議。 |
+| `compare_cards` | 橫向比較使用者持有卡，可針對指定通路或全通路列出各卡表現。 |
+| `get_promotions` | 查詢目前有效活動與持有卡中即將到期的優惠提醒；不是長期回饋率來源。 |
+| `get_card_details` | 回傳單張卡完整資料，包含通路回饋、限制條件、截止日、年費與備註。 |
+| `list_all_cards` | 輔助查詢可用 `card_id` 與卡名；一般對話通常不需要主動呼叫。 |
+| `reload_data` | 維運用工具，資料更新後手動重新載入 `data/processed/`；一般使用者對話不應呼叫。 |
+| `card://ctbc/{card_id}` | MCP Resource，提供單張卡完整 JSON。 |
+| `channels://ctbc/all` | MCP Resource，提供完整通路分類對照表。 |
+
 **Key Design Decisions:**
 
 - **一般推薦模式不經過 Sonnet Agent** — `/api/recommend/stream` 由後端固定執行 parse → search → details → promotions → reasons，前端以 structured SSE 顯示每一步
-- **真 MCP Connector**（非 function calling）— `/api/chat` 後端呼叫 `anthropic.beta.messages.stream(mcp_servers=[...])`，Claude 直接以 MCP JSON-RPC 連 `/mcp`，前端零侵入即可看到 `tool_use` 事件
+- **真 MCP Connector**（非 function calling）— `/api/chat` 後端呼叫 `anthropic.beta.messages.stream(mcp_servers=[...])`，Claude 直接以 MCP JSON-RPC 連 `/mcp`，前端零侵入即可看到 `tool_use` 事件；同一個 `/mcp` 也可供其他 MCP client 重用
 - **Unified ASGI app** — REST API、SSE chat、MCP Streamable HTTP 全部由同一個 Starlette + uvicorn 提供（port 8000），方便 Render 單服務部署
 - **Build-time merge** — 三層資料（API + card_features + microsite_deals）在 build time 合併為 `merged_cards.json`，runtime 只需查兩層
 - **推薦防呆規則** — 具體商家會使用 `merchant_hint` 精準比對；非現金點數不換算 NT$；`general` fallback 只採安全的一般消費基礎回饋
-- **System prompt 強制 cards_owned 範圍** — Claude 自行呼叫工具，但 prompt 嚴格規定 `cards_owned` 參數只能用使用者勾選的 card_id；超出範圍視為違規
+- **Session 注入 cards_owned** — 前端把使用者勾選的持卡清單注入 chat session；Claude 自行呼叫工具，但 `cards_owned` 參數只能使用該清單，超出範圍視為違規
 
 ---
 
@@ -219,15 +247,21 @@ npm run dev
 | 輸入範例 | 對應通路 |
 |---------|---------|
 | `7-11`、`小7`、`全家` | 超商 |
-| `全聯`、`家樂福`、`COSTCO` | 超市／量販 |
+| `全聯`、`家樂福`、`大潤發` | 超市／量販 |
+| `COSTCO`、`好市多` | 量販倉儲 |
 | `蝦皮`、`momo`、`網購` | 電商 |
 | `foodpanda`、`Uber Eats` | 外送 |
 | `捷運`、`高鐵`、`Uber` | 交通 |
 | `麥當勞`、`星巴克` | 餐飲 |
 | `機票`、`飯店`、`出國` | 旅遊 |
+| `Netflix`、`電影院`、`健身房` | 娛樂 |
 | `中油`、`加油` | 加油站 |
 | `屈臣氏`、`康是美` | 藥妝 |
 | `LINE Pay`、`Apple Pay` | 行動支付 |
+| `SOGO`、`新光三越`、`百貨` | 百貨公司 |
+| `保費`、`保險費`、`壽險` | 保費 |
+| `電信費`、`台灣大哥大`、`中華電信` | 電信費 |
+| `一般消費`、`其他消費` | 一般消費 |
 | `日本`、`韓國`、`海外` | 海外消費（自動辨識）|
 
 ---
@@ -278,7 +312,7 @@ python -m pytest tests/test_mcp_tools.py -v
 | Promotions | 5 | 優惠查詢、卡片詳情 |
 | Accuracy | 8 | 具體回饋率驗證 |
 | EdgeCases | 8 | 空值、特殊字元、邊界條件 |
-| ChannelMapping | 18 | 18 種通路映射正確性 |
+| ChannelMapping | 18 | 18 個通路映射測試案例 |
 
 ---
 
@@ -358,7 +392,7 @@ ctbc-payment-advisor/
 
 **Q: 為什麼要用 MCP Connector，不直接 function calling？**
 
-兩者表面上都能讓 Claude 呼叫工具，但 MCP Connector 走 MCP JSON-RPC 協定，後端不需要把工具包成 function schema 餵給 Claude；也代表同一個 `/mcp` 可以同時被 Claude API、Claude Desktop、Cursor 等任何 MCP client 使用（規格相容）。
+詳見前段 **Why MCP**。簡短來說，function calling 需要把工具 schema 綁在單一 LLM API 呼叫中；MCP 讓 `/mcp` 成為可重用的標準工具介面，推薦規則與資料查詢留在後端，未來更容易接到不同數位渠道。
 
 **Q: 富邦卡的資料來源？**
 

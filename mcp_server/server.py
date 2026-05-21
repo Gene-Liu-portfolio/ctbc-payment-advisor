@@ -186,7 +186,7 @@ def compare_cards(
 
     Args:
         cards_owned: 使用者持有的卡 card_id 列表（必填，不可為空）
-        channel:     指定比較通路（13 個 channel_id 之一），不填則比較全通路
+        channel:     指定比較通路（17 個 channel_id 之一），不填則比較全通路
         amount:      參考消費金額（新台幣，預設 NT$1,000）
     """
     return _compare_cards(
@@ -217,7 +217,7 @@ def get_promotions(
 
     Args:
         cards_owned: 使用者持有的卡 card_id 列表（必填，不可為空）
-        category:    通路分類篩選（13 個 channel_id 之一），不填回傳全部
+        category:    通路分類篩選（17 個 channel_id 之一），不填回傳全部
         valid_only:  是否只回傳有效優惠（預設 True，幾乎不需改）
     """
     return _get_promotions(
