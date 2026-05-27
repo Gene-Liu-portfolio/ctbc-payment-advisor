@@ -1,8 +1,8 @@
-# CTBC & Fubon Credit Card Payment Advisor
+# 中國信託 Agent x MCP 支付建議服務模組設計與實作
 
-**中國信託 × 台北富邦 信用卡支付建議系統**
+基於 **Claude × MCP（Model Context Protocol）** 架構的智慧刷卡建議服務。React 前端可透過 structured SSE 呼叫一般推薦流程，也可透過 Anthropic **MCP Connector** 讓 Claude 直接以 MCP 協定呼叫工具（非 function-calling 包裝），從使用者持有的 **13 張熱門與 benchmark 信用卡**（中信 6 + 非中信 7）中推薦最佳刷卡選擇。
 
-基於 **React × Claude × MCP（Model Context Protocol）** 架構的智慧刷卡建議服務。React 前端可透過 structured SSE 呼叫一般推薦流程，也可透過 Anthropic **MCP Connector** 讓 Claude 直接以 MCP 協定呼叫工具（非 function-calling 包裝），從使用者持有的 **13 張熱門信用卡**（中信 6 + 富邦 7）中推薦最佳刷卡選擇。
+本專案合作對象為中國信託；資料集中額外納入部分非中信信用卡作為跨銀行推薦邏輯與 benchmark 測試資料，不代表與該銀行合作。
 
 > 資料版本：2026-05-19 | 架構版本：v8.1（Structured SSE + MCP Connector）
 
@@ -24,15 +24,15 @@
 
 ## Why MCP
 
-本專案採用 MCP（Model Context Protocol）不是為了把工具呼叫換一種包裝，而是把「推薦邏輯、資料來源、限制條件」固定在銀行可控的後端服務中。Claude 負責理解使用者問題與選擇工具；實際可查哪些卡、可用哪些通路、怎麼計算回饋，仍由 `/mcp` 與 deterministic tool runtime 控制。
+本專案採用 MCP 不是為了把工具呼叫換一種包裝，而是把「推薦邏輯、資料來源、限制條件」固定在可控的後端服務中。LLM 負責理解使用者問題與選擇工具；實際可查哪些卡、可用哪些通路、怎麼計算回饋，仍由 `/mcp` 與 deterministic tool runtime 控制。
 
 這個設計帶來三個專案價值：
 
 - **推薦結果更可靠** — MCP 工具只從 `merged_cards.json`、通路對應表與後端計算邏輯取資料，降低 LLM 自行補卡片、補優惠或補回饋率的風險。
 - **更容易接進銀行既有數位渠道** — `/mcp` 是標準工具介面，同一套能力未來可提供給 Claude API、內部客服工具、行動銀行、網銀或其他 MCP client，不需要為每個入口重寫 function schema。
-- **核心規則留在 bank-owned backend** — 推薦排序、資料更新、優惠條件、fallback 規則都在後端維護；prompt 只負責引導 Claude 何時呼叫工具，不承擔資料真實性的責任。
+- **核心規則留在 bank-owned backend** — 推薦排序、資料更新、優惠條件、fallback 規則都在後端維護；prompt 只負責引導 LLM 何時呼叫工具，不承擔資料真實性的責任。
 
-`cards_owned` 也由前端 session 注入，而不是交給 LLM 自行填寫。使用者勾選的持卡清單是權限邊界：Claude 可以解讀需求、選擇工具，但工具收到的 `cards_owned` 必須固定等於使用者實際持有的 card_id 清單。這能避免推薦未持有卡，並讓前端狀態、後端查詢與未來銀行登入 session 保持一致。
+`cards_owned` 由前端選卡狀態傳入後端，並寫入 chat system prompt 約束 Claude 工具呼叫時只能使用該 card_id 清單；deterministic REST/SSE 推薦流程則直接使用 request body 中的 `cards_owned`。使用者勾選的持卡清單是權限邊界：Claude 可以解讀需求、選擇工具，但推薦邏輯必須以使用者實際持有的 card_id 清單為準。這能降低推薦未持有卡的風險，並讓前端狀態、後端查詢與未來銀行登入 session 保持一致。
 
 ---
 
@@ -49,7 +49,7 @@
 | `ctbc_c_cal` | 中華航空聯名卡 |
 | `ctbc_c_cpc` | 中油聯名卡 |
 
-**台北富邦銀行（Fubon）**
+**Benchmark cards（非合作銀行資料）**
 
 | Card ID | 卡名 |
 |---------|------|
@@ -172,7 +172,7 @@ scraper/merge.py ──> data/processed/merged_cards.json
 - **Unified ASGI app** — REST API、SSE chat、MCP Streamable HTTP 全部由同一個 Starlette + uvicorn 提供（port 8000），方便 Render 單服務部署
 - **Build-time merge** — 三層資料（API + card_features + microsite_deals）在 build time 合併為 `merged_cards.json`，runtime 只需查兩層
 - **推薦防呆規則** — 具體商家會使用 `merchant_hint` 精準比對；非現金點數不換算 NT$；`general` fallback 只採安全的一般消費基礎回饋
-- **Session 注入 cards_owned** — 前端把使用者勾選的持卡清單注入 chat session；Claude 自行呼叫工具，但 `cards_owned` 參數只能使用該清單，超出範圍視為違規
+- **Session 提供 cards_owned** — 前端把使用者勾選的持卡清單傳入 chat session；後端 system prompt 約束 Claude 呼叫工具時只能使用該清單，deterministic 推薦流程則直接以 request body 的 `cards_owned` 查詢
 
 ---
 
@@ -218,7 +218,7 @@ python -m mcp_server.http_app
 - `POST /api/recommend` — 情境推薦（Claude Haiku 輔助解析情境與產生理由；失敗時 regex fallback）
 - `*    /mcp` — MCP Streamable HTTP（給 Claude API 用，需公網 HTTPS 才有 effect）
 
-**2. 啟動前端**（Vite dev server，port 5173，自動 proxy `/api/*` 與 `/mcp` 到 8000）
+**2. 啟動前端**（Vite dev server，port 5173；目前設定會將 `/api` proxy 到 Render backend）
 
 ```bash
 cd "Credit Card AI Payment Advisor"
@@ -226,6 +226,8 @@ npm run dev
 ```
 
 開 `http://localhost:5173/`：勾選持有的卡 → 點 Start → 用自然語言聊天 → Claude 即時呼叫 MCP 工具回覆。
+
+若要測本地後端，需先啟動 `python -m mcp_server.http_app`，再將 `Credit Card AI Payment Advisor/vite.config.ts` 的 `/api` proxy target 從 Render URL 改成 `http://127.0.0.1:8000`。
 
 > ⚠️ **本地 chat 限制**：Anthropic 機房需從公網連到你的 `/mcp`。本地測試請：
 > (a) 把 MCP Server 部署到 Render（已預先設定 default URL `https://ctbc-payment-advisor.onrender.com/mcp`），或
@@ -312,7 +314,7 @@ python -m pytest tests/test_mcp_tools.py -v
 | Promotions | 5 | 優惠查詢、卡片詳情 |
 | Accuracy | 8 | 具體回饋率驗證 |
 | EdgeCases | 8 | 空值、特殊字元、邊界條件 |
-| ChannelMapping | 18 | 18 個通路映射測試案例 |
+| ChannelMapping | 18 | 17 種通路與模糊輸入映射案例 |
 
 ---
 
@@ -331,7 +333,7 @@ ctbc-payment-advisor/
 │   │       ├── LeftSidebar.tsx
 │   │       ├── WelcomeSection.tsx
 │   │       └── RecommendationCarousel.tsx
-│   └── vite.config.ts                # /api → :8000 proxy
+│   └── vite.config.ts                # /api → Render backend proxy（本地測試可切到 :8000）
 │
 ├── mcp_server/
 │   ├── http_app.py            # ★ 統一 ASGI（REST + MCP + chat）
@@ -357,7 +359,7 @@ ctbc-payment-advisor/
 ├── data/
 │   ├── processed/
 │   │   ├── merged_cards.json  # ★ Runtime 唯一卡片資料源
-│   │   ├── promotions.json    # 24 promotions
+│   │   ├── promotions.json    # standalone promotions
 │   │   └── channels.json      # 通路分類表
 │   ├── scraped/               # card_features.json + microsite_deals.json
 │   ├── schemas/card_schema.json  # JSON Schema 驗證
