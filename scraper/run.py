@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -178,48 +179,62 @@ def cmd_card_feature(args):
 
 
 def cmd_validate(args):
-    """驗證現有 processed 資料是否符合 schema。"""
+    """驗證現有 processed/runtime 資料是否符合 schema。"""
     from .data_cleaner import validate_card
 
-    cards_path = PROCESSED_DIR / "ctbc_cards.json"
-    if not cards_path.exists():
-        console.print(f"[red]✗ 找不到 {cards_path}，請先執行 --full[/red]")
-        return
-
-    data = json.loads(cards_path.read_text(encoding="utf-8"))
-    cards = data.get("cards", [])
-
     table = Table(title="Schema 驗證結果", show_lines=True)
+    table.add_column("資料集", style="magenta")
     table.add_column("卡片名稱", style="cyan")
     table.add_column("card_id", style="dim")
     table.add_column("狀態", justify="center")
     table.add_column("錯誤訊息")
 
     error_count = 0
-    for card in cards:
-        errs = validate_card(card)
-        if errs:
+    card_count = 0
+    datasets = [
+        ("ctbc_cards", PROCESSED_DIR / "ctbc_cards.json"),
+        ("fubon_cards", PROCESSED_DIR / "fubon_cards.json"),
+        ("merged_cards", PROCESSED_DIR / "merged_cards.json"),
+    ]
+
+    for dataset_name, cards_path in datasets:
+        if not cards_path.exists():
             error_count += 1
-            table.add_row(
-                card.get("card_name", "?"),
-                card.get("card_id", "?"),
-                "[red]✗[/red]",
-                "\n".join(errs[:2]),
-            )
-        else:
-            table.add_row(
-                card.get("card_name", "?"),
-                card.get("card_id", "?"),
-                "[green]✓[/green]",
-                "",
-            )
+            table.add_row(dataset_name, "-", "-", "[red]✗[/red]", f"找不到 {cards_path}")
+            continue
+
+        data = json.loads(cards_path.read_text(encoding="utf-8"))
+        cards = data.get("cards", [])
+        card_count += len(cards)
+
+        for card_index, card in enumerate(cards):
+            errs = validate_card(card)
+            if errs:
+                error_count += 1
+                table.add_row(
+                    dataset_name,
+                    card.get("card_name", "?"),
+                    card.get("card_id", f"index:{card_index}"),
+                    "[red]✗[/red]",
+                    "\n".join(errs[:3]),
+                )
+            else:
+                table.add_row(
+                    dataset_name,
+                    card.get("card_name", "?"),
+                    card.get("card_id", f"index:{card_index}"),
+                    "[green]✓[/green]",
+                    "",
+                )
 
     console.print(table)
     console.print(
-        f"\n共 {len(cards)} 張卡片，"
-        f"[green]{len(cards) - error_count} 張通過[/green]，"
-        f"[red]{error_count} 張有問題[/red]"
+        f"\n共驗證 {card_count} 筆卡片資料，"
+        f"[green]{card_count - error_count} 筆通過[/green]，"
+        f"[red]{error_count} 筆有問題[/red]"
     )
+    if error_count:
+        sys.exit(1)
 
 
 def _print_summary(result: dict, diff: dict, promotions: list, elapsed: int):

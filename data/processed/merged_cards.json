@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "description": "合併自 ctbc_cards + fubon_cards + card_features + microsite_deals",
-  "last_updated": "2026-05-19",
+  "last_updated": "2026-06-08",
   "merge_sources": {
     "ctbc_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/ctbc_cards.json",
     "fubon_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/fubon_cards.json",
@@ -83,7 +83,8 @@
           "cashback_description": "最高3%回饋",
           "conditions": "⚠️ 最高 3% 僅限漢神洲際館內消費（1% 基本回饋 + 2% 館內加碼），館外一般消費不適用加碼，且加碼回饋設有每月上限。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         },
         {
           "channel_id": "general",
@@ -92,7 +93,8 @@
           "cashback_description": "※漢神洲際館內消費最高3%含館內一般消費1%基本回饋(無上限)+2%加碼回饋(極緻卡每月上限7,500點，晶緻卡每月上限2,500點)。",
           "conditions": "⚠️ 最高 3% 僅限漢神洲際館內消費（1% 基本回饋 + 2% 館內加碼），館外一般消費不適用加碼，且加碼回饋設有每月上限。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         },
         {
           "channel_id": "general",
@@ -101,9 +103,11 @@
           "cashback_description": "館外一般消費0.5%回饋說明",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         }
-      ]
+      ],
+      "bank_id": "ctbc"
     },
     {
       "card_id": "ctbc_c_uniopen",
@@ -133,7 +137,8 @@
           "cashback_description": "免領券，消費天天最高雙11% OPENPOINT",
           "conditions": "⚠️ 最高 11% 需同時達成：①基本消費 1% + ②綁定 icash Pay 加碼 4% + ③指定統一集團多品牌消費加碼回饋，一般刷卡消費僅有基本回饋約 1–3%。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         },
         {
           "channel_id": "general",
@@ -142,7 +147,8 @@
           "cashback_description": "國內一般消費1%",
           "conditions": "⚠️ 最高 11% 需同時達成：①基本消費 1% + ②綁定 icash Pay 加碼 4% + ③指定統一集團多品牌消費加碼回饋，一般刷卡消費僅有基本回饋約 1–3%。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         },
         {
           "channel_id": "convenience_store",
@@ -151,7 +157,8 @@
           "cashback_description": "儲值交易不列入統一企業集團品牌加碼4%活動，惟星巴克線上儲值適用期間至115/6/30止。",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "超商"
         },
         {
           "channel_id": "overseas_general",
@@ -160,7 +167,8 @@
           "cashback_description": "國外實體商店最高11% OPENPOINT（基本3% + 指定地區/活動加碼8%）",
           "conditions": "⚠️ 最高 11% 為國外實體商店消費基本 3% + 指定地區/活動加碼 8%。加碼通常需登入中信銀行 APP 領券並連結 uniopen 會員，且加碼回饋有每月上限；網路交易、條碼支付或第三方支付不適用國外實體商店加碼。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "海外消費"
         },
         {
           "channel_id": "mobile_payment",
@@ -169,7 +177,8 @@
           "cashback_description": "綁定icash Pay消費最高加碼4%",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "行動支付"
         },
         {
           "channel_id": "convenience_store",
@@ -178,9 +187,11 @@
           "cashback_description": "小C 於1/1於康是美消費NT500元、1/3於統一超商消費NT100元、1/5日於統一時代百貨消費NT1,000元、1/20於星巴克使用icash Pay綁定uniopen聯名卡消費NT100元，總共消費4個品牌，可獲得6%回饋，預計將回饋106點OPENPOINT。",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "超商"
         }
-      ]
+      ],
+      "bank_id": "ctbc"
     },
     {
       "card_id": "ctbc_c_cs",
@@ -206,7 +217,8 @@
           "cashback_description": "大巨蛋秀泰影城天天15%",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         },
         {
           "channel_id": "dining",
@@ -215,7 +227,8 @@
           "cashback_description": "店內餐飲最高20%",
           "conditions": "⚠️ 最高 20% 僅限遠東 SOGO 館內指定餐飲消費，一般餐廳或館外消費不適用。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "餐飲"
         },
         {
           "channel_id": "mobile_payment",
@@ -224,7 +237,8 @@
           "cashback_description": "遠東SOGO聯名卡之悠遊卡當月使用自動加值滿NT500元享10% SOGO金回饋，每月享最高回饋50元。",
           "conditions": "⚠️ 最高 10% 需以悠遊卡功能自動加值且單次消費滿 NT$500，且每月最高回饋上限 50 元（以 SOGO 金點數回饋）。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "行動支付"
         },
         {
           "channel_id": "overseas_general",
@@ -233,7 +247,8 @@
           "cashback_description": "遠東SOGO聯名卡國內外一般消費享0.5% SOGO金回饋無上限；國外實體商店消費2% SOGO金回饋無上限。",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "海外消費"
         },
         {
           "channel_id": "general",
@@ -242,9 +257,11 @@
           "cashback_description": "點數累計以消費金額*回饋%並四捨五入至整數為止。回饋舉例：小A持有御璽卡於4/5在館內消費NT10,205元，商店於4/10完成請款，4月總計回饋306元SOGO金，計算如下：基本回饋：NT10,205元x0.5%=51.025元SOGO金，四捨五入後為51元。加碼回饋：NT10,205元x2.5%",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         }
-      ]
+      ],
+      "bank_id": "ctbc"
     },
     {
       "card_id": "ctbc_c_linepay",
@@ -290,7 +307,8 @@
           "cashback_description": "最高享16%回饋 天天回饋無上限",
           "conditions": "⚠️ 最高 16% 為特定通路（如指定電商、外送平台）的回饋上限，非所有通路皆適用此比率，實際回饋依消費通路而異，請確認通路專屬回饋。",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "一般消費"
         },
         {
           "channel_id": "overseas_general",
@@ -299,9 +317,11 @@
           "cashback_description": "國外實體商店消費最高2.8%回饋(限信用卡)",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "海外消費"
         }
       ],
+      "bank_id": "ctbc",
       "deals": [
         {
           "merchant": "精選飯店/餐廳",
@@ -3064,30 +3084,6 @@
           "source_page": "page_life"
         },
         {
-          "merchant": "Dyson",
-          "payment_method": "",
-          "benefit": "最高LINE POINTS 10%",
-          "cashback_rate": 0.1,
-          "conditions": "官方線上商城購買指定新品享回饋",
-          "valid_start": "2026-04-21",
-          "valid_end": "2026-05-21",
-          "channel_id": "general",
-          "detail_url": "javascript:void(0);",
-          "source_page": "page_life"
-        },
-        {
-          "merchant": "小北百貨",
-          "payment_method": "",
-          "benefit": "最高LINE POINTS 12%",
-          "cashback_rate": 0.12,
-          "conditions": "每週四單筆滿額享回饋",
-          "valid_start": "2026-05-01",
-          "valid_end": "2026-06-04",
-          "channel_id": "supermarket",
-          "detail_url": "javascript:void(0);",
-          "source_page": "page_life"
-        },
-        {
           "merchant": "家樂福",
           "payment_method": "Visa",
           "benefit": "LINE POINTS 5%",
@@ -3844,18 +3840,6 @@
           "source_page": "page_life"
         },
         {
-          "merchant": "全國特急電PowerExpress",
-          "payment_method": "",
-          "benefit": "LINE POINTS 10%",
-          "cashback_rate": 0.1,
-          "conditions": "單筆滿額享回饋 (每人每月上限500點)",
-          "valid_start": "2026-01-01",
-          "valid_end": "2026-05-31",
-          "channel_id": "travel",
-          "detail_url": "javascript:void(0);",
-          "source_page": "page_travel"
-        },
-        {
           "merchant": "美日韓港澳實體店優惠",
           "payment_method": "",
           "benefit": "LINE POINTS 5%",
@@ -3865,18 +3849,6 @@
           "valid_end": "2026-06-30",
           "channel_id": "travel",
           "detail_url": "javascript:void(0);",
-          "source_page": "page_travel"
-        },
-        {
-          "merchant": "新世界免稅",
-          "payment_method": "LINE Pay支付",
-          "benefit": "最高LINE POINTS 30%",
-          "cashback_rate": 0.3,
-          "conditions": "限綁定卡片並使用LINE Pay支付 (需以LINE Pay APP進入活動頁面)",
-          "valid_start": "2026-04-24",
-          "valid_end": "2026-05-24",
-          "channel_id": "travel",
-          "detail_url": "https://web-tw-pay.line.me/cms/event/template1.3/da3298ea-7825-4789-bda2-6fe7c94dfc9c",
           "source_page": "page_travel"
         },
         {
@@ -4770,9 +4742,11 @@
           "cashback_description": "3.本優惠限刷實體中國信託中華航空鼎尊無限卡/璀璨無限卡。每卡每日限享本優惠乙次，全單折扣優惠是依消費定價計算，另收定價10%服務費。",
           "conditions": "",
           "valid_end": null,
-          "data_source": "card_feature_direct"
+          "data_source": "card_feature_direct",
+          "channel_name": "旅遊"
         }
-      ]
+      ],
+      "bank_id": "ctbc"
     },
     {
       "card_id": "ctbc_c_cpc",
@@ -4858,7 +4832,8 @@
           "expiring_soon": false,
           "data_source": "api"
         }
-      ]
+      ],
+      "bank_id": "ctbc"
     },
     {
       "card_id": "fubon_c_j",

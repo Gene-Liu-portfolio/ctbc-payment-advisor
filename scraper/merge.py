@@ -21,6 +21,26 @@ DATA_PROCESSED = BASE_DIR / "data" / "processed"
 DATA_SCRAPED = BASE_DIR / "data" / "scraped"
 OUTPUT_PATH = DATA_PROCESSED / "merged_cards.json"
 
+_CHANNEL_NAMES = {
+    "convenience_store": "超商",
+    "supermarket": "超市／量販",
+    "wholesale": "量販倉儲",
+    "ecommerce": "電商",
+    "food_delivery": "外送",
+    "transport": "交通",
+    "dining": "餐飲",
+    "travel": "旅遊",
+    "entertainment": "娛樂",
+    "gas_station": "加油站",
+    "pharmacy": "藥妝",
+    "mobile_payment": "行動支付",
+    "department_store": "百貨公司",
+    "insurance": "保費",
+    "telecom": "電信費",
+    "general": "一般消費",
+    "overseas_general": "海外消費",
+}
+
 
 # ── 特定通路「最高回饋」條件補充 ─────────────────────────────────────────────
 # 針對描述含「最高」但 conditions 欄位為空的通路，補充必要的達成條件說明。
@@ -87,6 +107,19 @@ def _apply_condition_warnings(card_id: str, channels: list[dict]) -> list[dict]:
             continue
         if key in _CONDITION_WARNINGS and not (ch.get("conditions") or "").strip():
             ch["conditions"] = _CONDITION_WARNINGS[key]
+    return channels
+
+
+def _infer_bank_id(card_id: str) -> str | None:
+    prefix = (card_id or "").split("_", 1)[0]
+    return prefix if prefix in {"ctbc", "fubon"} else None
+
+
+def _ensure_channel_names(channels: list[dict]) -> list[dict]:
+    for ch in channels:
+        if not ch.get("channel_name"):
+            channel_id = ch.get("channel_id", "")
+            ch["channel_name"] = _CHANNEL_NAMES.get(channel_id, channel_id or "未知通路")
     return channels
 
 
@@ -198,6 +231,7 @@ def merge() -> dict:
     for card in all_base_cards:
         card_id = card["card_id"]
         merged = dict(card)
+        merged["bank_id"] = merged.get("bank_id") or _infer_bank_id(card_id)
 
         # 合併 channels（card_features 優先）
         feature_entry = features_cards.get(card_id, {})
@@ -220,6 +254,9 @@ def merge() -> dict:
 
         # 補充「最高回饋」達成條件說明（避免 Agent 誤以為無條件適用）
         merged["channels"] = _apply_condition_warnings(card_id, merged["channels"])
+
+        # 補齊 runtime schema 必填欄位
+        merged["channels"] = _ensure_channel_names(merged["channels"])
 
         # 附加 microsite deals（Method B：獨立 deals 陣列）
         microsite_entry = microsite_cards.get(card_id, {})

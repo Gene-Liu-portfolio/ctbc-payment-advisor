@@ -35,6 +35,8 @@ from anthropic import (
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
+from .utils.data_loader import validate_card_ids
+
 
 DEFAULT_MODEL = os.getenv("CLAUDE_AGENT_MODEL", "claude-sonnet-4-6")
 MCP_PUBLIC_URL = os.getenv(
@@ -87,7 +89,14 @@ def _extract_recommendation_data(tool_name: str, parsed):
         recommendations = []
         for comparison in parsed.get("comparison", []):
             results = comparison.get("card_rates") or []
-            results = sorted(results, key=lambda item: item.get("estimated_cashback") or 0, reverse=True)
+            results = sorted(
+                results,
+                key=lambda item: (
+                    item.get("estimated_cashback") or 0,
+                    item.get("cashback_rate") or 0,
+                ),
+                reverse=True,
+            )
             if results:
                 recommendations.append({
                     "channel_name": comparison.get("channel_name") or comparison.get("channel") or "比較結果",
@@ -155,6 +164,19 @@ def _build_system_prompt(cards_info: list[dict]) -> str:
 def _sse(event: str, data: dict) -> bytes:
     """格式化為 SSE event。"""
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode("utf-8")
+
+
+def _extract_card_ids(raw_cards) -> list[str]:
+    """Accept legacy chat card payloads and return card ids only."""
+    card_ids = []
+    for item in raw_cards or []:
+        if isinstance(item, dict):
+            card_id = item.get("card_id")
+        else:
+            card_id = str(item)
+        if card_id:
+            card_ids.append(card_id)
+    return card_ids
 
 
 def _classify_error(exc: Exception) -> dict:
@@ -321,12 +343,19 @@ async def chat_endpoint(request: Request):
         )
 
     message = body.get("message", "").strip()
-    cards_info = body.get("cards_owned", [])
+    raw_cards_info = body.get("cards_owned", [])
     history = body.get("history", [])
 
     if not message:
         return StreamingResponse(
             iter([_sse("error", {"message": "message is required"})]),
+            media_type="text/event-stream",
+        )
+
+    cards_info, validation_error = validate_card_ids(_extract_card_ids(raw_cards_info))
+    if validation_error:
+        return StreamingResponse(
+            iter([_sse("error", {"type": "api_invalid_request", "message": validation_error})]),
             media_type="text/event-stream",
         )
 

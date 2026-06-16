@@ -302,3 +302,14 @@ def infer_channel_id_from_merchants(merchants: list[str]) -> Optional[str]:
         if cid:
             votes[cid] = votes.get(cid, 0) + 1
     return max(votes, key=lambda k: votes[k]) if votes else None
+
+
+# Runtime channel_mapper is the canonical source of truth. Keep this scraper
+# module as a compatibility shim for existing imports in scraper/data_cleaner.py.
+from mcp_server.utils.channel_mapper import (  # noqa: E402,F401
+    MERCHANT_TO_CHANNEL,
+    extract_merchants_from_text,
+    get_channel_id,
+    infer_channel_id_from_merchants,
+    normalize_merchant,
+)

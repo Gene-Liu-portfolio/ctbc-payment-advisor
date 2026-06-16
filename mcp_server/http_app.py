@@ -34,10 +34,13 @@ import uvicorn
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse, StreamingResponse
+from starlette.responses import PlainTextResponse, StreamingResponse
 from starlette.routing import Mount, Route
 
 from .chat import chat_endpoint
+from .http_utils import allowed_origins as _allowed_origins
+from .http_utils import format_cashback_value as _format_cashback_value
+from .http_utils import json_response as _json
 from .server import mcp as mcp_server
 from .tools.compare import compare_cards as _compare_cards
 from .tools.promotions import get_card_details as _get_card_details
@@ -48,6 +51,7 @@ from .tools.search import search_by_channel as _search_by_channel
 from .tool_trace import tool_result_event as _tool_result_event
 from .utils.channel_mapper import MERCHANT_TO_CHANNEL, normalize_merchant
 from .utils.data_loader import get_cards_menu, get_data_summary
+from .utils.data_loader import validate_card_ids
 from .utils.llm_parser import parse_scenario
 
 DEFAULT_JPY_TWD_RATE = float(os.getenv("JPY_TWD_RATE", "0.22"))
@@ -56,7 +60,7 @@ DEFAULT_JPY_TWD_RATE = float(os.getenv("JPY_TWD_RATE", "0.22"))
 # ── Public routes ────────────────────────────────────────────────────────────
 
 async def home(_: Request):
-    return JSONResponse({
+    return _json({
         "service": "CTBC Payment Advisor",
         "endpoints": {
             "health": "/health",
@@ -72,15 +76,6 @@ async def health(_: Request):
 
 
 # ── REST API routes ──────────────────────────────────────────────────────────
-
-def _json(data: dict, status: int = 200) -> JSONResponse:
-    return JSONResponse(data, status_code=status)
-
-
-def _format_cashback_value(value) -> str:
-    if value is None:
-        return "未計算"
-    return f"{float(value):g}"
 
 
 def _extract_amount_fallback(text: str) -> dict:
@@ -164,6 +159,9 @@ async def api_search(request: Request):
     cards_owned = body.get("cards_owned", [])
     if not cards_owned:
         return _json({"error": "cards_owned is required"}, 400)
+    _, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _json({"error": validation_error}, 400)
 
     result = _search_by_channel(
         channel=body.get("channel", "general"),
@@ -187,6 +185,9 @@ async def api_recommend(request: Request):
         return _json({"error": "cards_owned is required"}, 400)
     if not scenario:
         return _json({"error": "scenario is required"}, 400)
+    _, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _json({"error": validation_error}, 400)
 
     result = _recommend_payment(scenario=scenario, cards_owned=cards_owned)
     return _json(result)
@@ -205,6 +206,9 @@ async def api_recommend_stream(request: Request):
         return _json({"error": "cards_owned is required"}, 400)
     if not scenario:
         return _json({"error": "scenario is required"}, 400)
+    _, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _json({"error": validation_error}, 400)
 
     async def event_generator():
         def sse(data: dict) -> str:
@@ -541,6 +545,9 @@ async def api_compare(request: Request):
     cards_owned = body.get("cards_owned", [])
     if not cards_owned:
         return _json({"error": "cards_owned is required"}, 400)
+    _, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _json({"error": validation_error}, 400)
 
     result = _compare_cards(
         cards_owned=cards_owned,
@@ -560,6 +567,9 @@ async def api_promotions(request: Request):
     cards_owned = body.get("cards_owned", [])
     if not cards_owned:
         return _json({"error": "cards_owned is required"}, 400)
+    _, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _json({"error": validation_error}, 400)
 
     result = _get_promotions(
         cards_owned=cards_owned,
@@ -609,7 +619,7 @@ routes = [
 app = Starlette(routes=routes, lifespan=mcp_app.router.lifespan_context)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
 )

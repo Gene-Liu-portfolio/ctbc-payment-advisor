@@ -11,6 +11,7 @@ import re
 
 from .search import search_by_channel, _resolve_channel, _channel_display_name
 from ..utils.channel_mapper import MERCHANT_TO_CHANNEL, normalize_merchant
+from ..utils.data_loader import validate_card_ids
 from ..utils.llm_parser import parse_scenario, generate_reasons
 
 
@@ -129,6 +130,9 @@ def recommend_payment(
         return _error(scenario, "請先選擇您持有的信用卡（cards_owned 不可為空）")
     if not scenario or not scenario.strip():
         return _error("", "情境描述不可為空")
+    _, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _error(scenario, validation_error)
 
     # ── 步驟 1：用 Claude 解析自然語言；失敗時 fallback 到 regex ──
     parsed_channels: list[dict] = []

@@ -7,14 +7,13 @@ Phase 3：CTBC 支付建議 MCP Server（FastMCP）
     python -m mcp_server.server          # stdio 模式（給 Agent 使用）
     mcp dev mcp_server/server.py         # 開發模式（帶 Inspector UI）
 
-Tools（7個）：
+Tools（6個）：
     search_by_channel     → 依通路搜尋最優卡
     recommend_payment     → 依情境推薦最佳刷卡
     compare_cards         → 多卡回饋比較
     get_promotions        → 取得持有卡的優惠活動
     get_card_details      → 取得卡片完整資訊
     list_all_cards        → 列出所有可用卡片 ID（輔助）
-    reload_data           → 重新載入資料（輔助）
 
 Resources（2個）：
     card://ctbc/{card_id}  → 單張卡片 JSON
@@ -39,7 +38,6 @@ from .utils.data_loader import (
     get_cards_menu,
     get_channels_map,
     get_data_summary,
-    reload_all,
 )
 
 # ── FastMCP 初始化 ────────────────────────────────────────────────────────────
@@ -295,23 +293,6 @@ def list_all_cards() -> dict:
         "last_updated": summary.get("last_updated"),
         "card_count":   summary.get("card_count"),
         "cards":        get_cards_menu(),
-    }
-
-
-@mcp.tool()
-def reload_data() -> dict:
-    """
-    【維運用工具】強制從磁碟重新載入最新的 data/processed/ 資料。
-
-    一般對話中【絕對不應該】呼叫此工具。
-    僅在資料更新（scraper 跑完）後給維運人員手動執行。
-    """
-    reload_all()
-    summary = get_data_summary()
-    return {
-        "status":       "reloaded",
-        "last_updated": summary.get("last_updated"),
-        "card_count":   summary.get("card_count"),
     }
 
 
