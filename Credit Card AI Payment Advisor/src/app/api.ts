@@ -12,8 +12,11 @@
 export interface CardMenuItem {
   card_id: string;
   card_name: string;
-  bank_id: string;
+  bank_id: 'ctbc' | 'fubon';
   tags: string[];
+  card_org?: string | null;
+  last_verified: string | null;
+  data_source: string;
 }
 
 export interface SearchResult {
