@@ -3,6 +3,7 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'https://ctbc-payment-advisor.onrender.com'
 
 function figmaAssetResolver() {
   return {
@@ -37,7 +38,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://ctbc-payment-advisor.onrender.com',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
     },

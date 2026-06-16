@@ -20,6 +20,11 @@ dependencies = [
     "starlette>=0.37.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
 [project.scripts]
 ctbc-mcp-http = "mcp_server.http_app:main"  # 統一 ASGI（REST + MCP + chat），給 Render / 本地用
 
