@@ -15,6 +15,7 @@ from ..utils.data_loader import (
     get_all_promotions,
     get_card_by_id,
     get_cards_by_ids,
+    validate_card_ids,
 )
 from .search import _resolve_channel, _CHANNEL_NAMES
 
@@ -66,6 +67,10 @@ def get_promotions(
     """
     if not cards_owned:
         return _promo_error("請先選擇您持有的信用卡（cards_owned 不可為空）")
+
+    _, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _promo_error(validation_error)
 
     # 1. 取全行促活動
     promos = get_all_promotions(valid_only=valid_only)

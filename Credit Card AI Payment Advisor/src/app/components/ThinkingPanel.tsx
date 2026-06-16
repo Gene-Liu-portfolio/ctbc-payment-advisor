@@ -49,7 +49,6 @@ const MCP_TOOL_NAMES = new Set([
   'get_promotions',
   'get_card_details',
   'list_all_cards',
-  'reload_data',
 ]);
 
 function formatJson(data: Record<string, unknown>): string {

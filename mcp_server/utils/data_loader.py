@@ -76,6 +76,37 @@ def get_cards_by_ids(card_ids: list[str]) -> list[dict]:
     return [c for c in get_all_cards() if c["card_id"] in id_set]
 
 
+def validate_card_ids(card_ids: list[str]) -> tuple[list[dict], str | None]:
+    """
+    Validate a user-owned card list and return canonical card records.
+    Unlike get_cards_by_ids(), unknown IDs are an explicit error.
+    """
+    if not card_ids:
+        return [], "請先選擇您持有的信用卡（cards_owned 不可為空）"
+
+    index = {card["card_id"]: card for card in get_all_cards()}
+    missing = [card_id for card_id in card_ids if card_id not in index]
+    if missing:
+        return [], f"找不到您持有的卡片資料：{', '.join(missing)}"
+
+    seen = set()
+    cards = []
+    for card_id in card_ids:
+        if card_id in seen:
+            continue
+        seen.add(card_id)
+        cards.append(index[card_id])
+    return cards, None
+
+
+def infer_bank_id(card_id: str) -> str | None:
+    """Infer bank id from canonical card id when source data omits it."""
+    prefix = (card_id or "").split("_", 1)[0]
+    if prefix in {"ctbc", "fubon"}:
+        return prefix
+    return None
+
+
 def get_cards_menu() -> list[dict]:
     """
     回傳供 CLI 選單顯示的精簡卡片列表。
@@ -85,8 +116,11 @@ def get_cards_menu() -> list[dict]:
         {
             "card_id":   c["card_id"],
             "card_name": c["card_name"],
+            "bank_id":   c.get("bank_id") or infer_bank_id(c["card_id"]),
             "tags":      c.get("tags", []),
             "card_org":  c.get("card_org"),
+            "last_verified": c.get("last_verified"),
+            "data_source": c.get("data_source", "unknown"),
         }
         for c in get_all_cards()
         if c.get("card_status") == "active"

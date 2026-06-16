@@ -7,9 +7,10 @@ Tool 3：compare_cards
 
 from __future__ import annotations
 
-from ..utils.calculator import calc_estimated_cashback, is_expiring_soon
-from ..utils.data_loader import get_best_channel_for_card, get_best_deal_for_card, get_cards_by_ids
+from ..utils.channel_mapper import MERCHANT_TO_CHANNEL, normalize_merchant
+from ..utils.data_loader import validate_card_ids
 from .search import _resolve_channel, _CHANNEL_NAMES
+from .rewards import evaluate_card_reward, reward_sort_key
 
 # 標準通路列表（依重要性排序）
 _ALL_CHANNEL_IDS = [
@@ -86,15 +87,18 @@ def compare_cards(
     if not cards_owned:
         return _error("請先選擇您持有的信用卡（cards_owned 不可為空）")
 
-    owned_cards = get_cards_by_ids(cards_owned)
-    if not owned_cards:
-        return _error("找不到您持有的卡片資料，請確認 card_id 是否正確")
+    owned_cards, validation_error = validate_card_ids(cards_owned)
+    if validation_error:
+        return _error(validation_error)
 
     # 決定要比較的通路清單
     if channel:
         channel_ids = [_resolve_channel(channel)]
+        normalized = normalize_merchant(channel)
+        merchant_hint = normalized if normalized in MERCHANT_TO_CHANNEL else None
     else:
         channel_ids = _ALL_CHANNEL_IDS
+        merchant_hint = None
 
     # 逐通路比較
     comparison = []
@@ -103,52 +107,34 @@ def compare_cards(
         card_rates = []
 
         for card in owned_cards:
-            # 優先查 deals（microsite 商家促銷），再查 channels
-            deal = get_best_deal_for_card(card, cid)
-            if deal and deal.get("cashback_rate") is not None:
-                rate = deal["cashback_rate"]
-                cap  = None
-                est  = calc_estimated_cashback(amount, rate, cap)
-                card_rates.append({
-                    "card_id":              card["card_id"],
-                    "card_name":            card["card_name"],
-                    "cashback_rate":        rate,
-                    "cashback_type":        "cash",
-                    "estimated_cashback":   est,
-                    "max_cashback_per_period": cap,
-                    "expiring_soon":        is_expiring_soon(deal.get("valid_end")),
-                    "data_source":          "microsite",
-                    "is_best":              False,
-                })
-            else:
-                best_ch = get_best_channel_for_card(card, cid)
-                rate = best_ch.get("cashback_rate") if best_ch else None
-                cap  = best_ch.get("max_cashback_per_period") if best_ch else None
-                est  = calc_estimated_cashback(amount, rate, cap)
-                card_rates.append({
-                    "card_id":              card["card_id"],
-                    "card_name":            card["card_name"],
-                    "cashback_rate":        rate,
-                    "cashback_type":        best_ch.get("cashback_type", "cash") if best_ch else None,
-                    "estimated_cashback":   est,
-                    "max_cashback_per_period": cap,
-                    "expiring_soon":        is_expiring_soon(best_ch.get("valid_end")) if best_ch else False,
-                    "data_source":          best_ch.get("data_source", "api") if best_ch else None,
-                    "is_best":              False,
-                })
+            reward = evaluate_card_reward(card, cid, amount, merchant_hint=merchant_hint)
+            if reward is None:
+                reward = {
+                    "card_id": card["card_id"],
+                    "card_name": card["card_name"],
+                    "cashback_rate": None,
+                    "cashback_type": None,
+                    "cashback_description": "",
+                    "estimated_cashback": None,
+                    "max_cashback_per_period": None,
+                    "valid_end": None,
+                    "expiring_soon": False,
+                    "conditions": "",
+                    "data_source": None,
+                    "is_fallback": False,
+                    "calculation_trace": {},
+                }
+            card_rates.append({**reward, "is_best": False})
 
         # 標記最優卡
-        best_rate = max(
-            (r.get("cashback_rate") or 0.0 for r in card_rates),
-            default=0.0
-        )
-        if best_rate > 0:
+        best_score = max((reward_sort_key(r) for r in card_rates), default=(0.0, 0.0))
+        if best_score > (0.0, 0.0):
             for r in card_rates:
-                if (r.get("cashback_rate") or 0.0) == best_rate:
+                if reward_sort_key(r) == best_score:
                     r["is_best"] = True
 
         # 只在全通路比較時跳過回饋率都是 0/None 的通路
-        if not channel and best_rate <= 0:
+        if not channel and best_score <= (0.0, 0.0):
             continue
 
         comparison.append({

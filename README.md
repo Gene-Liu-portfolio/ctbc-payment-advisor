@@ -131,7 +131,7 @@ User input
             └─ FastMCP tools/resources
                ├─ tools: search_by_channel, recommend_payment, compare_cards
                ├─ tools: get_card_details, get_promotions
-               ├─ tools: list_all_cards, reload_data
+               ├─ tools: list_all_cards
                ├─ resource: card://ctbc/{card_id}
                └─ resource: channels://ctbc/all
 
@@ -161,7 +161,6 @@ scraper/merge.py ──> data/processed/merged_cards.json
 | `get_promotions` | 查詢目前有效活動與持有卡中即將到期的優惠提醒；不是長期回饋率來源。 |
 | `get_card_details` | 回傳單張卡完整資料，包含通路回饋、限制條件、截止日、年費與備註。 |
 | `list_all_cards` | 輔助查詢可用 `card_id` 與卡名；一般對話通常不需要主動呼叫。 |
-| `reload_data` | 維運用工具，資料更新後手動重新載入 `data/processed/`；一般使用者對話不應呼叫。 |
 | `card://ctbc/{card_id}` | MCP Resource，提供單張卡完整 JSON。 |
 | `channels://ctbc/all` | MCP Resource，提供完整通路分類對照表。 |
 
@@ -173,6 +172,8 @@ scraper/merge.py ──> data/processed/merged_cards.json
 - **Build-time merge** — 三層資料（API + card_features + microsite_deals）在 build time 合併為 `merged_cards.json`，runtime 只需查兩層
 - **推薦防呆規則** — 具體商家會使用 `merchant_hint` 精準比對；非現金點數不換算 NT$；`general` fallback 只採安全的一般消費基礎回饋
 - **Session 提供 cards_owned** — 前端把使用者勾選的持卡清單傳入 chat session；後端 system prompt 約束 Claude 呼叫工具時只能使用該清單，deterministic 推薦流程則直接以 request body 的 `cards_owned` 查詢
+- **公開 MCP surface 最小化** — `/mcp` 仍是給 Claude MCP Connector 使用的公開 Streamable HTTP 介面；維運用資料 reload 不再暴露為 MCP tool，正式環境請用 `ALLOWED_ORIGINS` 限制前端來源。
+- **Chrome extension 不在本輪範圍** — 目前產品入口維持 React Web Demo；後端 API 保持可重用，但本專案不建立 extension package。
 
 ---
 
@@ -237,8 +238,8 @@ npm run dev
 ### Deployment（Render）
 
 1. Push 到 GitHub，Render 連 repo，使用 `pyproject.toml` 的 `ctbc-mcp-http` script
-2. 設 env `ANTHROPIC_API_KEY` 與（可選）`CLAUDE_AGENT_MODEL`
-3. Render 會把同一個服務同時對外暴露 `/api/*`、`/mcp`，前端設 `MCP_PUBLIC_URL` 為自己的 Render URL 即可閉環
+2. 設 env `ANTHROPIC_API_KEY`、`ALLOWED_ORIGINS=https://你的前端網域` 與（可選）`CLAUDE_AGENT_MODEL`
+3. Render 會把同一個服務同時對外暴露 `/api/*`、`/mcp`，前端設 `MCP_PUBLIC_URL` 為自己的 Render URL 即可閉環；`/mcp` 是公開 MCP surface，請勿暴露維運工具或內部資料。
 
 ---
 
@@ -280,8 +281,14 @@ python -m scraper.run card-feature --direct
 # 3. Build-time 三層合併
 python -m scraper.merge
 
-# 4. 驗證
+# 4. 驗證資料 schema（ctbc_cards + fubon_cards + merged_cards）
+python -m scraper.run validate
+
+# 5. 驗證 deterministic tools
 python -m pytest tests/test_mcp_tools.py -v
+
+# 6. 驗證 structured SSE 系統輸入輸出與工具 trace
+python -m pytest tests/test_recommend_stream_integration.py -v
 ```
 
 ### Merge Strategy（`scraper/merge.py`）
@@ -298,8 +305,46 @@ ctbc_cards.json + fubon_cards.json     → 基礎卡片（13 張）
 ## Testing
 
 ```bash
+# 安裝 / 同步 Python 依賴（CI 也會執行）
+uv sync
+
+# 資料 schema 驗證（失敗時 exit 1）
+uv run python -m scraper.run validate
+
 # 單元測試（不需 LLM API，純資料邏輯）
-python -m pytest tests/test_mcp_tools.py -v
+uv run pytest tests/test_mcp_tools.py -v
+
+# 系統 I/O 測試（不啟動前端，直接驗證 /api/recommend/stream 事件）
+uv run pytest tests/test_recommend_stream_integration.py -v
+
+# Agent chat contract + 專案自動化設定契約
+uv run pytest tests/test_chat_contract.py tests/test_project_automation_contracts.py -v
+
+# 產生五題測試案例的預期 / 實際結果報告
+uv run python tests/recommend_stream_cases.py
+```
+
+### CI
+
+GitHub Actions 會在 `pull_request` 到 `main` 以及 `push` 到 `main` 時自動執行：
+
+```bash
+uv sync
+uv run pytest tests/test_mcp_tools.py tests/test_recommend_stream_integration.py tests/test_chat_contract.py tests/test_project_automation_contracts.py -q
+uv run python -m scraper.run validate
+
+cd "Credit Card AI Payment Advisor"
+npm ci
+npm run build
+```
+
+Playwright E2E 目前是本地可重跑測試，第一版不放入 CI，避免瀏覽器與 server 啟動造成 flaky：
+
+```bash
+cd "Credit Card AI Payment Advisor"
+npx playwright install chromium   # 第一次執行前需要
+npm run test:e2e
+npm run test:e2e:headed           # 需要看瀏覽器時使用
 ```
 
 ### Test Coverage
@@ -315,6 +360,10 @@ python -m pytest tests/test_mcp_tools.py -v
 | Accuracy | 8 | 具體回饋率驗證 |
 | EdgeCases | 8 | 空值、特殊字元、邊界條件 |
 | ChannelMapping | 18 | 17 種通路與模糊輸入映射案例 |
+| RecommendStreamIntegration | 5 | structured SSE 的推薦結果、tool_call、tool_result、mcp_calculation 顯示流程 |
+| ChatContract | 5 | `/api/chat` 錯誤 SSE、canonical card prompt、MCP tool_result normalization |
+| ProjectAutomationContracts | 4 | CI workflow、pytest dev dependency、Playwright scripts、Vite proxy env override |
+| Playwright E2E | 4 | 卡片選擇、一般推薦 thinking panel、AgentThinkingPanel mock SSE |
 
 ---
 
@@ -322,10 +371,19 @@ python -m pytest tests/test_mcp_tools.py -v
 
 ```
 ctbc-payment-advisor/
+├── .github/
+│   └── workflows/ci.yml             # PR/main push 自動驗證
+│
 ├── Credit Card AI Payment Advisor/   # React Web Demo（唯一前端）
+│   ├── e2e/
+│   │   └── payment-advisor.spec.ts  # 本地 Playwright UI / SSE 測試
+│   ├── playwright.config.ts         # 啟動本地 backend + Vite dev server
 │   ├── src/app/
 │   │   ├── App.tsx                   # 主畫面：卡片選擇 → 多輪 chat
 │   │   ├── api.ts                    # fetchCards + streamChat（SSE）
+│   │   ├── recommendations.ts        # 推薦卡片資料轉換
+│   │   ├── structuredStream.ts       # structured SSE 解析
+│   │   ├── updateQueue.ts            # 工具 trace 延遲更新 queue
 │   │   └── components/
 │   │       ├── ChatInput.tsx
 │   │       ├── ChatMessage.tsx       # 顯示 text + tool_use chips
@@ -337,12 +395,14 @@ ctbc-payment-advisor/
 │
 ├── mcp_server/
 │   ├── http_app.py            # ★ 統一 ASGI（REST + MCP + chat）
+│   ├── http_utils.py          # HTTP response / CORS / formatting helpers
 │   ├── chat.py                # /api/chat — Claude MCP Connector + SSE
-│   ├── server.py              # FastMCP server 定義（7 tools + 2 resources）
+│   ├── server.py              # FastMCP server 定義（6 tools + 2 resources）
 │   ├── tools/
 │   │   ├── search.py          # search_by_channel
 │   │   ├── recommend.py       # recommend_payment（情境解析）
 │   │   ├── compare.py         # compare_cards
+│   │   ├── rewards.py         # 共用回饋評估與計算 trace
 │   │   └── promotions.py      # get_promotions + get_card_details
 │   └── utils/
 │       ├── data_loader.py     # merged_cards.json 統一存取
@@ -366,7 +426,11 @@ ctbc-payment-advisor/
 │   └── seed/                  # bootstrap 備援
 │
 └── tests/
-    └── test_mcp_tools.py      # 單元測試（deterministic，不需 LLM）
+    ├── test_chat_contract.py                 # /api/chat SSE 與 MCP tool result contract
+    ├── test_project_automation_contracts.py  # CI/E2E 設定契約測試
+    ├── recommend_stream_cases.py              # 五題系統 I/O 測試案例與報告輸出
+    ├── test_recommend_stream_integration.py   # structured SSE trace 整合測試
+    └── test_mcp_tools.py                      # 單元測試（deterministic，不需 LLM）
 ```
 
 ---
@@ -382,7 +446,7 @@ ctbc-payment-advisor/
 | Backend | Starlette + uvicorn（單一 ASGI） |
 | Frontend | React 18 + Vite 6 + TypeScript + Tailwind 4 + Radix UI |
 | Data | JSON files（build-time merged） |
-| Testing | pytest（deterministic，不需 LLM） |
+| Testing | pytest（deterministic，不需 LLM）+ Playwright（本地 E2E） |
 
 ---
 
