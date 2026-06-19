@@ -45,6 +45,27 @@ def test_chat_endpoint_rejects_unknown_card_id_with_sse_error():
     ]
 
 
+def test_chat_endpoint_is_disabled_without_explicit_agent_flag():
+    events = asyncio.run(_call_chat_endpoint({
+        "message": "全聯 1000 元用哪張卡？",
+        "cards_owned": [{"card_id": "ctbc_c_linepay", "card_name": "偽造名稱"}],
+        "history": [],
+    }))
+
+    assert events == [
+        {
+            "event": "error",
+            "data": {
+                "type": "api_disabled",
+                "message": (
+                    "Agent chat is disabled on this backend. Use the public /mcp endpoint "
+                    "from a remote MCP client, or enable ENABLE_AGENT_CHAT=true on a private backend."
+                ),
+            },
+        }
+    ]
+
+
 def test_chat_system_prompt_uses_canonical_backend_card_names():
     cards_info, validation_error = validate_card_ids(["ctbc_c_linepay"])
 

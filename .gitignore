@@ -18,3 +18,10 @@ nohup.out
 node_modules/
 Credit Card AI Payment Advisor/dist/
 .DS_Store
+
+# Playwright test artifacts
+Credit Card AI Payment Advisor/test-results/
+Credit Card AI Payment Advisor/playwright-report/
+
+# Local comparison notes
+readme_old.md

@@ -21,6 +21,7 @@ load_dotenv()
 # ── 模型設定 ──────────────────────────────────────────────────────────────────
 PARSER_MODEL = os.getenv("CLAUDE_PARSER_MODEL", "claude-haiku-4-5-20251001")
 REASONER_MODEL = os.getenv("CLAUDE_REASONER_MODEL", "claude-haiku-4-5-20251001")
+ENABLE_SERVER_LLM = os.getenv("ENABLE_SERVER_LLM", "").lower() in {"1", "true", "yes", "on"}
 
 # 合法 channel_id（與 search.py:_VALID_CHANNEL_IDS 同步）
 _VALID_CHANNEL_IDS = [
@@ -33,6 +34,8 @@ _VALID_CHANNEL_IDS = [
 
 def _client():
     """延遲建立 Anthropic client；無 API key 時回傳 None 觸發 fallback。"""
+    if not ENABLE_SERVER_LLM:
+        return None
     if not os.getenv("ANTHROPIC_API_KEY"):
         return None
     try:
