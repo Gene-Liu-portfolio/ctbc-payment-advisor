@@ -39,6 +39,7 @@ from .utils.data_loader import validate_card_ids
 
 
 DEFAULT_MODEL = os.getenv("CLAUDE_AGENT_MODEL", "claude-sonnet-4-6")
+ENABLE_AGENT_CHAT = os.getenv("ENABLE_AGENT_CHAT", "").lower() in {"1", "true", "yes", "on"}
 MCP_PUBLIC_URL = os.getenv(
     "MCP_PUBLIC_URL",
     "https://ctbc-payment-advisor.onrender.com/mcp",
@@ -356,6 +357,18 @@ async def chat_endpoint(request: Request):
     if validation_error:
         return StreamingResponse(
             iter([_sse("error", {"type": "api_invalid_request", "message": validation_error})]),
+            media_type="text/event-stream",
+        )
+
+    if not ENABLE_AGENT_CHAT:
+        return StreamingResponse(
+            iter([_sse("error", {
+                "type": "api_disabled",
+                "message": (
+                    "Agent chat is disabled on this backend. Use the public /mcp endpoint "
+                    "from a remote MCP client, or enable ENABLE_AGENT_CHAT=true on a private backend."
+                ),
+            })]),
             media_type="text/event-stream",
         )
 

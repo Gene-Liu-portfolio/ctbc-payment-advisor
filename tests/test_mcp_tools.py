@@ -30,6 +30,7 @@ from mcp_server.tools.recommend import recommend_payment, _extract_amount, _extr
 from mcp_server.tools.compare import compare_cards
 from mcp_server.tools.promotions import get_promotions, get_card_details
 from mcp_server.tool_trace import compact_search_result, tool_result_event
+from mcp_server.utils import llm_parser
 from mcp_server.utils.llm_parser import _VALID_CHANNEL_IDS as LLM_VALID_CHANNEL_IDS
 from mcp_server.utils.data_loader import (
     get_all_cards, get_card_by_id, get_cards_by_ids,
@@ -375,6 +376,19 @@ class TestSearchByChannel:
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. recommend_payment 測試
 # ═══════════════════════════════════════════════════════════════════════════
+
+def test_server_llm_is_disabled_by_default_even_when_api_key_exists(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    monkeypatch.setattr(llm_parser, "ENABLE_SERVER_LLM", False)
+
+    assert llm_parser.parse_scenario("全聯 1000 元") is None
+    assert llm_parser.generate_reasons(
+        scenario="全聯 1000 元",
+        channel_name="超市／量販",
+        amount=1000,
+        recommendations=[{"card_id": "ctbc_c_linepay"}],
+    ) == {}
+
 
 class TestRecommendPayment:
     """Tool 2: recommend_payment"""

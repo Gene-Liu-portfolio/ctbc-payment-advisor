@@ -1,8 +1,12 @@
 # 中國信託 Agent x MCP 支付建議服務模組設計與實作
 
-基於 **Claude × MCP（Model Context Protocol）** 架構的智慧刷卡建議服務。React 前端可透過 structured SSE 呼叫一般推薦流程，也可透過 Anthropic **MCP Connector** 讓 Claude 直接以 MCP 協定呼叫工具（非 function-calling 包裝），從使用者持有的 **13 張熱門與 benchmark 信用卡**（中信 6 + 非中信 7）中推薦最佳刷卡選擇。
+[![CI](https://github.com/Gene-Liu-portfolio/ctbc-payment-advisor/actions/workflows/ci.yml/badge.svg)](https://github.com/Gene-Liu-portfolio/ctbc-payment-advisor/actions/workflows/ci.yml)
 
-本專案合作對象為中國信託；資料集中額外納入部分非中信信用卡作為跨銀行推薦邏輯與 benchmark 測試資料，不代表與該銀行合作。
+基於 **Claude × MCP** 架構的智慧刷卡建議服務。使用者可在 React Web Demo 中勾選持有卡片，輸入自然語言消費情境，系統會透過後端推薦邏輯與 MCP tools 推薦較適合的刷卡選擇。
+
+本專案合作對象為中國信託；資料集中額外納入部分非中信信用卡作為跨銀行推薦邏輯與 benchmark 測試資料，並沒有與該銀行合作。
+
+除了本專案的前端網頁，`/mcp` 也可作為獨立 MCP server 使用。由於 MCP 服務直接以後端形式部署在 Render，只要 MCP client 支援 remote MCP / Streamable HTTP，例如 Cursor 或其他可設定線上 MCP URL 的工具，就可以透過公開 `/mcp` endpoint 連接並使用本專案暴露的推薦工具與卡片資料資源。
 
 > 資料版本：2026-05-19 | 架構版本：v8.1（Structured SSE + MCP Connector）
 
@@ -10,15 +14,12 @@
 
 ## Features
 
-- **單一前端（React）** — Vite + React 18 + Tailwind 4 + Radix UI 統一 demo 介面
-- **真 MCP 協定整合** — Claude API 透過 `mcp_servers` 參數直接連 `/mcp`，前端可即時看到 Claude 呼叫了哪些工具
-- **雙模式 SSE 串流** — `/api/recommend/stream` 提供一般推薦流程；`/api/chat` 提供 Claude Agent 對話與 tool_use 事件
-- **情境推薦** — 輸入「去全聯買菜 1500 元」，自動推薦最優卡與預估回饋
-- **多通路解析** — 一次輸入可辨識多個通路（如全聯 + foodpanda），分別推薦
-- **持卡比較 / 優惠查詢 / 單卡詳情** — 透過 chat 自然觸發對應 MCP 工具
-- **海外消費辨識** — Claude 解析與 deterministic fallback 均可識別 `overseas_general`
-- **回饋種類區分** — 現金 / LINE Points / OPENPOINT / 哩程 / 紅利點數
-- **優惠到期提醒** — `expiring_soon` 自動標記，Claude 會主動提醒
+- **Web Demo 示範 LLM 調用 MCP tools**：使用自己的 Claude API key 啟動本地或私有 backend，可完整測試自然語言解析、推薦理由與 Agent chat。
+- **真實 MCP 協定整合**：Agent mode 透過 Claude MCP Connector 呼叫 `/mcp`，不是把工具包成 function calling。
+- **公開 remote MCP endpoint**：支援 remote MCP over Streamable HTTP 或 SSE 的 client，例如 Cursor，可直接連線使用。
+- **雙模式推薦流程**：一般推薦模式使用 structured SSE；Agent mode 顯示 Claude 的 tool use 與 tool result。
+- **後端可信計算**：通路解析、持卡驗證、回饋計算、排序與非現金回饋處理都由後端 deterministic runtime 控制。
+- **可測試的工程流程**：`pytest` 覆蓋推薦邏輯與 MCP contract，Playwright 覆蓋本地 Web E2E。
 
 ---
 
@@ -26,7 +27,7 @@
 
 本專案採用 MCP 不是為了把工具呼叫換一種包裝，而是把「推薦邏輯、資料來源、限制條件」固定在可控的後端服務中。LLM 負責理解使用者問題與選擇工具；實際可查哪些卡、可用哪些通路、怎麼計算回饋，仍由 `/mcp` 與 deterministic tool runtime 控制。
 
-這個設計帶來三個專案價值：
+這個設計有三個優勢：
 
 - **推薦結果更可靠** — MCP 工具只從 `merged_cards.json`、通路對應表與後端計算邏輯取資料，降低 LLM 自行補卡片、補優惠或補回饋率的風險。
 - **更容易接進銀行既有數位渠道** — `/mcp` 是標準工具介面，同一套能力未來可提供給 Claude API、內部客服工具、行動銀行、網銀或其他 MCP client，不需要為每個入口重寫 function schema。
@@ -36,445 +37,250 @@
 
 ---
 
-## Supported Cards（13 張）
+## Quick start
 
-**中信銀行（CTBC）**
+本專案有兩條使用路線：
 
-| Card ID | 卡名 |
-|---------|------|
-| `ctbc_c_hanshin` | 漢神聯名卡 |
-| `ctbc_c_uniopen` | uniopen聯名卡 |
-| `ctbc_c_cs` | 遠東SOGO聯名卡 |
-| `ctbc_c_linepay` | LINE Pay信用卡 |
-| `ctbc_c_cal` | 中華航空聯名卡 |
-| `ctbc_c_cpc` | 中油聯名卡 |
+- **路線一：使用 Web Demo 完整示範 LLM + MCP 流程**。適合想測試前端、Claude parse、推薦理由與 Agent chat 的使用者；需要自己的 `ANTHROPIC_API_KEY`，並啟動本地或私有 backend。
+- **路線二：只使用公開 MCP tools**。適合在 Cursor 或其他 MCP client 中直接調用本專案的推薦、比較與卡片查詢工具；不需要本專案提供任何 LLM API key，client 端自己的模型負責對話與推理。
 
-**Benchmark cards（非合作銀行資料）**
+### 路線一：Web Demo 完整流程
 
-| Card ID | 卡名 |
-|---------|------|
-| `fubon_c_j` | 富邦J卡 |
-| `fubon_c_diamond` | 富邦鑽保卡 |
-| `fubon_b_lifestyle` | 富邦富利生活卡 |
-| `fubon_c_costco` | 富邦Costco聯名卡 |
-| `fubon_c_guardians` | 富邦悍將勇士聯名卡 |
-| `fubon_c_momo` | 富邦momo聯名卡 |
-| `fubon_c_twm` | 台灣大哥大Open Possible聯名卡 |
+需求：
 
-### 卡片 JSON 欄位說明
+- Python 3.10+
+- uv
+- Node.js 22 LTS recommended（目前前端依賴至少需要 Node 20+）
+- npm
+- Anthropic API key
 
-每張卡片在 `data/processed/merged_cards.json` 中為一個 object，結構參考 `data/schemas/card_schema.json`（JSON Schema Draft-07）。
-
-**卡片層級欄位**
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `card_id` | string | 卡片唯一識別碼，格式 `{bank}_{name}`（例：`ctbc_c_linepay`） |
-| `card_name` | string | 卡片完整名稱 |
-| `card_status` | enum | `active` 現行 / `discontinued` 已停發 / `unknown` 待確認 |
-| `card_org` | enum \| null | 發卡組織：`VISA` / `Mastercard` / `JCB` / `AE` / `UnionPay` |
-| `annual_fee` | int \| null | 年費（NTD），`0` = 免年費 |
-| `annual_fee_waiver` | string \| null | 免年費條件說明 |
-| `card_url` | string \| null | 官網卡片介紹頁 URL |
-| `apply_url` | string \| null | 線上申辦頁 URL |
-| `tags` | string[] | 卡片標籤，用於快速搜尋（例：`["餐飲美食", "行動支付"]`） |
-| `notes` | string \| null | 備註說明 |
-| `data_source` | enum | 資料來源：`api` / `scraper` / `manual` / `manual_seed` |
-| `last_verified` | date \| null | 最後人工驗證日期（`YYYY-MM-DD`） |
-| `channels` | object[] | 各通路優惠設定（見下方） |
-| `deals` | object[] | （Optional）microsite 商家層級優惠，build-time 由 `microsite_deals.json` 注入 |
-
-**`channels[]` 內欄位**（單一通路的回饋設定）
-
-| 欄位 | 型別 | 說明 |
-|------|------|------|
-| `channel_id` | enum | 通路代碼：`convenience_store` / `supermarket` / `ecommerce` / `food_delivery` / `transport` / `dining` / `travel` / `entertainment` / `gas_station` / `pharmacy` / `mobile_payment` / `general` / `overseas_general` / `wholesale` / `department_store` / `insurance` / `telecom` |
-| `channel_name` | string | 通路中文名稱 |
-| `merchants` | string[] | 適用商家清單，**空陣列 = 該類別全部適用** |
-| `cashback_type` | enum | `cash` 現金 / `points` 紅利點數 / `miles` 哩程 |
-| `cashback_rate` | float \| null | 回饋率，`0.05` = 5%（範圍 0–1） |
-| `cashback_description` | string \| null | 回饋說明原文（資料來源原始文字） |
-| `max_cashback_per_period` | int \| null | 每期回饋上限（NTD），`null` = 無上限 |
-| `min_spend` | int \| null | 最低消費門檻（NTD），`null` / `0` = 不限金額 |
-| `conditions` | string \| null | 完整條件說明（含限制、排除項） |
-| `valid_forever` | bool | `true` = 長期有效（非限時優惠） |
-| `valid_start` | date \| null | 優惠開始日（`YYYY-MM-DD`） |
-| `valid_end` | date \| null | 優惠截止日，`null` = 無截止 |
-| `expiring_soon` | bool | 30 天內到期自動標記 `true`（由 `data_cleaner` 計算） |
-| `data_source` | string | 該通路資料來源：`api` / `card_feature_direct` / `microsite` / `manual` |
-
-**多重 `channel_id` 的處理**：同一張卡可能有多筆相同 `channel_id`（例：`general` 出現在 `cash` 和 `points` 兩種回饋形式），代表不同 `cashback_type` 的並列回饋方案。
-
----
-
-## Architecture
-
-<details>
-<summary>Current backend flow</summary>
-
-```
-User input
-├─ General recommendation mode
-│  POST /api/recommend/stream
-│  ├─ parse_scenario()        Claude Haiku or regex fallback
-│  ├─ search_by_channel()     core ranking tool
-│  ├─ get_card_details()      conditions and limits
-│  ├─ get_promotions()        active promos and expiry reminders
-│  ├─ generate_reasons()      Chinese explanation
-│  └─ SSE result              recommendations[].best_options[]
-│
-└─ Agent chat mode
-   POST /api/chat
-   └─ Claude Sonnet
-      └─ MCP Connector
-         └─ /mcp Streamable HTTP
-            └─ FastMCP tools/resources
-               ├─ tools: search_by_channel, recommend_payment, compare_cards
-               ├─ tools: get_card_details, get_promotions
-               ├─ tools: list_all_cards
-               ├─ resource: card://ctbc/{card_id}
-               └─ resource: channels://ctbc/all
-
-Shared runtime layer
-├─ channel_mapper.py
-├─ data_loader.py
-├─ calculator.py
-├─ llm_parser.py
-└─ tool_trace.py
-   └─ data/processed/merged_cards.json
-      ├─ deals[]      merchant-level offers
-      └─ channels[]   channel-level offers
-
-Build-time data flow
-scraper/merge.py ──> data/processed/merged_cards.json
-```
-
-</details>
-
-### MCP Tools
-
-| Tool / Resource | 負責內容 |
-|-----------------|----------|
-| `search_by_channel` | 單一通路的主力排序工具。依使用者持有卡、通路、金額計算 top cards，並保留 fallback、條件與計算 trace。 |
-| `recommend_payment` | 一站式自然語言推薦。解析情境中的金額與多個通路，再逐一呼叫 `search_by_channel` 產出整體建議。 |
-| `compare_cards` | 橫向比較使用者持有卡，可針對指定通路或全通路列出各卡表現。 |
-| `get_promotions` | 查詢目前有效活動與持有卡中即將到期的優惠提醒；不是長期回饋率來源。 |
-| `get_card_details` | 回傳單張卡完整資料，包含通路回饋、限制條件、截止日、年費與備註。 |
-| `list_all_cards` | 輔助查詢可用 `card_id` 與卡名；一般對話通常不需要主動呼叫。 |
-| `card://ctbc/{card_id}` | MCP Resource，提供單張卡完整 JSON。 |
-| `channels://ctbc/all` | MCP Resource，提供完整通路分類對照表。 |
-
-**Key Design Decisions:**
-
-- **一般推薦模式不經過 Sonnet Agent** — `/api/recommend/stream` 由後端固定執行 parse → search → details → promotions → reasons，前端以 structured SSE 顯示每一步
-- **真 MCP Connector**（非 function calling）— `/api/chat` 後端呼叫 `anthropic.beta.messages.stream(mcp_servers=[...])`，Claude 直接以 MCP JSON-RPC 連 `/mcp`，前端零侵入即可看到 `tool_use` 事件；同一個 `/mcp` 也可供其他 MCP client 重用
-- **Unified ASGI app** — REST API、SSE chat、MCP Streamable HTTP 全部由同一個 Starlette + uvicorn 提供（port 8000），方便 Render 單服務部署
-- **Build-time merge** — 三層資料（API + card_features + microsite_deals）在 build time 合併為 `merged_cards.json`，runtime 只需查兩層
-- **推薦防呆規則** — 具體商家會使用 `merchant_hint` 精準比對；非現金點數不換算 NT$；`general` fallback 只採安全的一般消費基礎回饋
-- **Session 提供 cards_owned** — 前端把使用者勾選的持卡清單傳入 chat session；後端 system prompt 約束 Claude 呼叫工具時只能使用該清單，deterministic 推薦流程則直接以 request body 的 `cards_owned` 查詢
-- **公開 MCP surface 最小化** — `/mcp` 仍是給 Claude MCP Connector 使用的公開 Streamable HTTP 介面；維運用資料 reload 不再暴露為 MCP tool，正式環境請用 `ALLOWED_ORIGINS` 限制前端來源。
-- **Chrome extension 不在本輪範圍** — 目前產品入口維持 React Web Demo；後端 API 保持可重用，但本專案不建立 extension package。
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.10+ 與 Node 18+
-- [Anthropic API Key](https://console.anthropic.com)
-
-### Installation
+啟動 backend：
 
 ```bash
 git clone https://github.com/Gene-Liu-portfolio/ctbc-payment-advisor.git
 cd ctbc-payment-advisor
 
-# Backend
-python -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
+uv sync
 cp .env.example .env
-# 編輯 .env 填入 ANTHROPIC_API_KEY
+# 在 .env 填入 ANTHROPIC_API_KEY
+# 若要啟用一般推薦的 LLM parse / reason：
+# ENABLE_SERVER_LLM=true
+# 若要啟用 /api/chat Agent mode：
+# ENABLE_AGENT_CHAT=true
 
-# Frontend
-cd "Credit Card AI Payment Advisor"
-npm install
+uv run python -m mcp_server.http_app
 ```
 
-### Usage
-
-**1. 啟動後端**（同時提供 REST + MCP + Chat，port 8000）
-
-```bash
-python -m mcp_server.http_app
-```
-
-端點：
-- `GET  /api/cards` — 卡片清單
-- `POST /api/recommend/stream` — 一般推薦模式 structured SSE
-- `POST /api/chat` — Claude SSE 串流（透過 MCP Connector 呼叫工具）
-- `POST /api/{search,compare,promotions,card-details}` — REST deterministic 查詢
-- `POST /api/recommend` — 情境推薦（Claude Haiku 輔助解析情境與產生理由；失敗時 regex fallback）
-- `*    /mcp` — MCP Streamable HTTP（給 Claude API 用，需公網 HTTPS 才有 effect）
-
-**2. 啟動前端**（Vite dev server，port 5173；目前設定會將 `/api` proxy 到 Render backend）
+另一個 Terminal 啟動前端，並指定使用本地 backend：
 
 ```bash
 cd "Credit Card AI Payment Advisor"
-npm run dev
+npm ci
+VITE_API_PROXY_TARGET=http://127.0.0.1:8000 npm run dev
 ```
 
-開 `http://localhost:5173/`：勾選持有的卡 → 點 Start → 用自然語言聊天 → Claude 即時呼叫 MCP 工具回覆。
+開啟：
 
-若要測本地後端，需先啟動 `python -m mcp_server.http_app`，再將 `Credit Card AI Payment Advisor/vite.config.ts` 的 `/api` proxy target 從 Render URL 改成 `http://127.0.0.1:8000`。
+```text
+http://localhost:5173/
+```
 
-> ⚠️ **本地 chat 限制**：Anthropic 機房需從公網連到你的 `/mcp`。本地測試請：
-> (a) 把 MCP Server 部署到 Render（已預先設定 default URL `https://ctbc-payment-advisor.onrender.com/mcp`），或
-> (b) 開 Cloudflared tunnel：`cloudflared tunnel --url http://localhost:8000`，再設 env `MCP_PUBLIC_URL=https://xxx.trycloudflare.com/mcp`。
-> 純走 REST API（不經 Claude）則無此限制。
+使用流程：勾選持有卡片，點 Start，輸入像「去好市多採買 5000 元」或「在 momo 買家電 3000 元」這類消費情境。
 
-### Deployment（Render）
+### 路線二：只使用公開 MCP tools
 
-1. Push 到 GitHub，Render 連 repo，使用 `pyproject.toml` 的 `ctbc-mcp-http` script
-2. 設 env `ANTHROPIC_API_KEY`、`ALLOWED_ORIGINS=https://你的前端網域` 與（可選）`CLAUDE_AGENT_MODEL`
-3. Render 會把同一個服務同時對外暴露 `/api/*`、`/mcp`，前端設 `MCP_PUBLIC_URL` 為自己的 Render URL 即可閉環；`/mcp` 是公開 MCP surface，請勿暴露維運工具或內部資料。
+如果你只是想在 Cursor 或其他支援 remote MCP 的工具中使用本專案的刷卡推薦工具，不需要 clone 專案，也不需要本專案的 `ANTHROPIC_API_KEY`。直接把 MCP client 指到公開 Render endpoint：
 
----
+```text
+https://ctbc-payment-advisor.onrender.com/mcp
+```
 
-## Supported Channels
+Render 在這裡的角色是把本專案後端服務，例如卡片資料取得、通路查詢、優惠運算、推薦比較，包裝成可被 MCP client 呼叫的線上 MCP server。LLM 對話、推理與工具選擇由使用者自己的 MCP client / 模型環境負責；本服務回傳 deterministic tool result。
 
-系統支援模糊輸入，自動對應到 17 種標準通路：
+### 前端預設 proxy
 
-| 輸入範例 | 對應通路 |
-|---------|---------|
-| `7-11`、`小7`、`全家` | 超商 |
-| `全聯`、`家樂福`、`大潤發` | 超市／量販 |
-| `COSTCO`、`好市多` | 量販倉儲 |
-| `蝦皮`、`momo`、`網購` | 電商 |
-| `foodpanda`、`Uber Eats` | 外送 |
-| `捷運`、`高鐵`、`Uber` | 交通 |
-| `麥當勞`、`星巴克` | 餐飲 |
-| `機票`、`飯店`、`出國` | 旅遊 |
-| `Netflix`、`電影院`、`健身房` | 娛樂 |
-| `中油`、`加油` | 加油站 |
-| `屈臣氏`、`康是美` | 藥妝 |
-| `LINE Pay`、`Apple Pay` | 行動支付 |
-| `SOGO`、`新光三越`、`百貨` | 百貨公司 |
-| `保費`、`保險費`、`壽險` | 保費 |
-| `電信費`、`台灣大哥大`、`中華電信` | 電信費 |
-| `一般消費`、`其他消費` | 一般消費 |
-| `日本`、`韓國`、`海外` | 海外消費（自動辨識）|
+`vite.config.ts` 預設會把 `/api` request proxy 到已部署的 Render backend：
+
+```text
+https://ctbc-payment-advisor.onrender.com
+```
+
+這個預設值保留是為了展示「前端可透過公開 backend / MCP 入口連線」。如果要完整測試 Web Demo 的 Claude-backed flows，請使用路線一的 `VITE_API_PROXY_TARGET=http://127.0.0.1:8000` 指向自己的本地或私有 backend。
 
 ---
 
-## Data Pipeline
+## Using this MCP server from other clients
+
+本專案的 Render backend 同時提供公開 remote MCP endpoint：
+
+```text
+https://ctbc-payment-advisor.onrender.com/mcp
+```
+
+任何支援 remote MCP over Streamable HTTP 或 SSE 的 MCP client 都可以直接連到這個 endpoint。以 Cursor 為例，可在 `~/.cursor/mcp.json` 或專案內 `.cursor/mcp.json` 加入：
+
+```json
+{
+  "mcpServers": {
+    "ctbc-payment-advisor": {
+      "url": "https://ctbc-payment-advisor.onrender.com/mcp"
+    }
+  }
+}
+```
+
+啟用後，client 可以呼叫本專案暴露的 MCP tools，例如 `search_by_channel`、`recommend_payment`、`compare_cards`、`get_promotions`、`get_card_details`、`list_all_cards`。
+
+範例 prompt：
+
+```text
+使用 ctbc-payment-advisor 比較 LINE Pay信用卡、富邦momo聯名卡、富邦Costco聯名卡，在 momo 消費 3000 元哪張比較划算。
+```
+
+```text
+使用 ctbc-payment-advisor MCP tools，推薦好市多消費 5000 元適合用哪張卡。
+```
+
+這個 endpoint 是公開工具介面，適合 demo 與整合測試。請不要透過 MCP 暴露 admin tool、secret、維運工具或客戶個資。
+
+---
+
+## 可用 MCP 工具
+
+| Tool / Resource | 負責內容 |
+|-----------------|----------|
+| `search_by_channel` | 依通路、持有卡與金額搜尋較適合的卡片，回傳排序、條件與計算 trace。 |
+| `recommend_payment` | 從自然語言消費情境解析通路與金額，再產生整體推薦。 |
+| `compare_cards` | 比較多張持有卡在指定通路或全通路的回饋差異。 |
+| `get_promotions` | 查詢目前有效活動與即將到期的優惠提醒。 |
+| `get_card_details` | 查詢單張卡完整資料、通路回饋、限制條件與年費資訊。 |
+| `list_all_cards` | 查詢目前可用的 `card_id` 與卡名。 |
+| `card://ctbc/{card_id}` | MCP Resource，提供單張卡 JSON。 |
+| `channels://ctbc/all` | MCP Resource，提供通路分類對照。 |
+
+---
+
+## 支援卡片（13 張）
+
+- 中國信託：漢神聯名卡、uniopen聯名卡、遠東SOGO聯名卡、LINE Pay信用卡、中華航空聯名卡、中油聯名卡
+- 富邦 benchmark：富邦J卡、富邦鑽保卡、富邦富利生活卡、富邦Costco聯名卡、富邦悍將勇士聯名卡、富邦momo聯名卡、台灣大哥大Open Possible聯名卡
+
+---
+
+## 架構簡介
+
+```text
+React Web Demo
+├─ /api/recommend/stream  一般推薦模式，structured SSE
+├─ /api/chat              Agent mode，Claude MCP Connector
+└─ /api/*                 REST deterministic 查詢
+
+Render backend
+├─ Starlette + uvicorn    REST / SSE / MCP 共用 ASGI service
+├─ FastMCP                /mcp Streamable HTTP
+├─ mcp_server/tools/      推薦、比較、優惠、卡片查詢 tools
+└─ data/processed/merged_cards.json
+```
+
+核心原則：
+
+- LLM 負責理解使用者語意與選擇工具；推薦排序、持卡驗證、資料查詢與回饋計算留在後端。
+- `cards_owned` 會在後端以 canonical card data 驗證，避免信任前端傳入的卡名。
+- 非現金回饋，例如 LINE Points、OPENPOINT、哩程，不會被誤當成 NT$ 現金回饋估算。
+- 卡片 runtime schema 定義在 `data/schemas/card_schema.json`；資料合併邏輯在 `scraper/merge.py`。
+
+---
+
+## 本地後端與測試
+
+需要完整 Web Demo LLM flows、開發後端、跑 Python 測試、資料驗證，或不想使用 Render backend 時，才需要本地後端。
 
 ```bash
-# 1. 爬取中信基礎資料（6 張熱門卡 + 優惠活動）
-python -m scraper.run full
-
-# 2. 爬取卡片特色頁回饋率
-python -m scraper.run card-feature --direct
-
-# 3. Build-time 三層合併
-python -m scraper.merge
-
-# 4. 驗證資料 schema（ctbc_cards + fubon_cards + merged_cards）
-python -m scraper.run validate
-
-# 5. 驗證 deterministic tools
-python -m pytest tests/test_mcp_tools.py -v
-
-# 6. 驗證 structured SSE 系統輸入輸出與工具 trace
-python -m pytest tests/test_recommend_stream_integration.py -v
-```
-
-### Merge Strategy（`scraper/merge.py`）
-
-```
-ctbc_cards.json + fubon_cards.json     → 基礎卡片（13 張）
-    + card_features.json               → channels 覆蓋（同 channel_id 取 card_features 優先）
-    + microsite_deals.json             → deals 獨立陣列（過濾已過期）
-    → merged_cards.json (v2.0)
-```
-
----
-
-## Testing
-
-```bash
-# 安裝 / 同步 Python 依賴（CI 也會執行）
 uv sync
+cp .env.example .env
+# Web Demo LLM flows 需要填入 ANTHROPIC_API_KEY
+# ENABLE_SERVER_LLM=true
+# ENABLE_AGENT_CHAT=true
 
-# 資料 schema 驗證（失敗時 exit 1）
-uv run python -m scraper.run validate
-
-# 單元測試（不需 LLM API，純資料邏輯）
-uv run pytest tests/test_mcp_tools.py -v
-
-# 系統 I/O 測試（不啟動前端，直接驗證 /api/recommend/stream 事件）
-uv run pytest tests/test_recommend_stream_integration.py -v
-
-# Agent chat contract + 專案自動化設定契約
-uv run pytest tests/test_chat_contract.py tests/test_project_automation_contracts.py -v
-
-# 產生五題測試案例的預期 / 實際結果報告
-uv run python tests/recommend_stream_cases.py
+uv run python -m mcp_server.http_app
 ```
 
-### CI
-
-GitHub Actions 會在 `pull_request` 到 `main` 以及 `push` 到 `main` 時自動執行：
+另一個 Terminal 啟動前端並指定本地後端：
 
 ```bash
-uv sync
+cd "Credit Card AI Payment Advisor"
+VITE_API_PROXY_TARGET=http://127.0.0.1:8000 npm run dev
+```
+
+測試定位：
+
+- `pytest`：測推薦邏輯、資料契約、MCP tool 結果、SSE contract 與 CI/E2E 設定契約。
+- `Playwright`：模擬使用者操作網頁，驗證前端、卡片選擇、推薦卡片、thinking panel、Agent mock SSE 是否能正常渲染。
+- Playwright 是本地 E2E 測試工具，不是資料驗證工具，也不是取代 `pytest`。
+
+常用驗證指令：
+
+```bash
 uv run pytest tests/test_mcp_tools.py tests/test_recommend_stream_integration.py tests/test_chat_contract.py tests/test_project_automation_contracts.py -q
 uv run python -m scraper.run validate
 
 cd "Credit Card AI Payment Advisor"
 npm ci
 npm run build
+npm run test:e2e
 ```
 
-Playwright E2E 目前是本地可重跑測試，第一版不放入 CI，避免瀏覽器與 server 啟動造成 flaky：
+第一次在新機器跑 Playwright 時，如果提示瀏覽器不存在，再執行：
 
 ```bash
 cd "Credit Card AI Payment Advisor"
-npx playwright install chromium   # 第一次執行前需要
-npm run test:e2e
-npm run test:e2e:headed           # 需要看瀏覽器時使用
-```
-
-### Test Coverage
-
-| 類別 | 數量 | 涵蓋 |
-|------|------|------|
-| Calculator | 12 | 回饋計算、日期判斷 |
-| DataLoader | 12 | 資料載入、查詢、fallback |
-| SearchByChannel | 12 | 通路查詢、排序、結構 |
-| RecommendPayment | 13 | 金額抽取、通路識別、情境推薦 |
-| CompareCards | 7 | 比較邏輯、is_best 標記 |
-| Promotions | 5 | 優惠查詢、卡片詳情 |
-| Accuracy | 8 | 具體回饋率驗證 |
-| EdgeCases | 8 | 空值、特殊字元、邊界條件 |
-| ChannelMapping | 18 | 17 種通路與模糊輸入映射案例 |
-| RecommendStreamIntegration | 5 | structured SSE 的推薦結果、tool_call、tool_result、mcp_calculation 顯示流程 |
-| ChatContract | 5 | `/api/chat` 錯誤 SSE、canonical card prompt、MCP tool_result normalization |
-| ProjectAutomationContracts | 4 | CI workflow、pytest dev dependency、Playwright scripts、Vite proxy env override |
-| Playwright E2E | 4 | 卡片選擇、一般推薦 thinking panel、AgentThinkingPanel mock SSE |
-
----
-
-## Project Structure
-
-```
-ctbc-payment-advisor/
-├── .github/
-│   └── workflows/ci.yml             # PR/main push 自動驗證
-│
-├── Credit Card AI Payment Advisor/   # React Web Demo（唯一前端）
-│   ├── e2e/
-│   │   └── payment-advisor.spec.ts  # 本地 Playwright UI / SSE 測試
-│   ├── playwright.config.ts         # 啟動本地 backend + Vite dev server
-│   ├── src/app/
-│   │   ├── App.tsx                   # 主畫面：卡片選擇 → 多輪 chat
-│   │   ├── api.ts                    # fetchCards + streamChat（SSE）
-│   │   ├── recommendations.ts        # 推薦卡片資料轉換
-│   │   ├── structuredStream.ts       # structured SSE 解析
-│   │   ├── updateQueue.ts            # 工具 trace 延遲更新 queue
-│   │   └── components/
-│   │       ├── ChatInput.tsx
-│   │       ├── ChatMessage.tsx       # 顯示 text + tool_use chips
-│   │       ├── CardSelectionPage.tsx
-│   │       ├── LeftSidebar.tsx
-│   │       ├── WelcomeSection.tsx
-│   │       └── RecommendationCarousel.tsx
-│   └── vite.config.ts                # /api → Render backend proxy（本地測試可切到 :8000）
-│
-├── mcp_server/
-│   ├── http_app.py            # ★ 統一 ASGI（REST + MCP + chat）
-│   ├── http_utils.py          # HTTP response / CORS / formatting helpers
-│   ├── chat.py                # /api/chat — Claude MCP Connector + SSE
-│   ├── server.py              # FastMCP server 定義（6 tools + 2 resources）
-│   ├── tools/
-│   │   ├── search.py          # search_by_channel
-│   │   ├── recommend.py       # recommend_payment（情境解析）
-│   │   ├── compare.py         # compare_cards
-│   │   ├── rewards.py         # 共用回饋評估與計算 trace
-│   │   └── promotions.py      # get_promotions + get_card_details
-│   └── utils/
-│       ├── data_loader.py     # merged_cards.json 統一存取
-│       ├── calculator.py      # 回饋計算
-│       └── channel_mapper.py  # 通路名稱正規化
-│
-├── scraper/
-│   ├── ctbc_scraper.py        # CTBC 官方 JSON API
-│   ├── card_feature_scraper.py # 卡片特色頁爬蟲
-│   ├── microsite_scraper.py   # 商家層級優惠爬蟲
-│   ├── merge.py               # Build-time 三層合併
-│   └── channel_mapper.py      # 通路對應表（source of truth）
-│
-├── data/
-│   ├── processed/
-│   │   ├── merged_cards.json  # ★ Runtime 唯一卡片資料源
-│   │   ├── promotions.json    # standalone promotions
-│   │   └── channels.json      # 通路分類表
-│   ├── scraped/               # card_features.json + microsite_deals.json
-│   ├── schemas/card_schema.json  # JSON Schema 驗證
-│   └── seed/                  # bootstrap 備援
-│
-└── tests/
-    ├── test_chat_contract.py                 # /api/chat SSE 與 MCP tool result contract
-    ├── test_project_automation_contracts.py  # CI/E2E 設定契約測試
-    ├── recommend_stream_cases.py              # 五題系統 I/O 測試案例與報告輸出
-    ├── test_recommend_stream_integration.py   # structured SSE trace 整合測試
-    └── test_mcp_tools.py                      # 單元測試（deterministic，不需 LLM）
+npx playwright install chromium
 ```
 
 ---
 
-## Tech Stack
+## 安全邊界與限制
 
-| Component | Technology |
-|-----------|-----------|
-| LLM | Anthropic Claude API（Sonnet 4.6 用於 chat；Haiku 4.5 用於情境解析與推薦理由） |
-| LLM ↔ Tools | **MCP Connector**（`anthropic.beta.messages.stream(mcp_servers=...)`，beta `mcp-client-2025-04-04`） |
-| MCP Framework | FastMCP（Python `mcp` SDK 1.27+） |
-| Transport | Streamable HTTP（SSE） |
-| Backend | Starlette + uvicorn（單一 ASGI） |
-| Frontend | React 18 + Vite 6 + TypeScript + Tailwind 4 + Radix UI |
-| Data | JSON files（build-time merged） |
-| Testing | pytest（deterministic，不需 LLM）+ Playwright（本地 E2E） |
+- `/mcp` 是公開 endpoint，目的是支援 Claude MCP Connector 與 remote MCP client。
+- 公開 Render backend 不應設定 `ANTHROPIC_API_KEY`，也不應開啟 `ENABLE_SERVER_LLM=true` 或 `ENABLE_AGENT_CHAT=true`；避免公開服務消耗專案方 LLM quota。
+- MCP 只暴露推薦、比較、優惠查詢、卡片查詢等 deterministic tool 能力；不暴露 reload data、admin tool 或內部維運工具。
+- 正式環境應使用 `ALLOWED_ORIGINS` 限制前端來源。
+- 使用者或其他 MCP client 呼叫工具時，請求會打到本專案 Render service；人數增加時需考慮 Render 資源、冷啟動與流量限制。
+- 卡片資料為 demo / benchmark data，可能不是最新銀行優惠；實際回饋、活動、限制條件仍以銀行官方公告為準。
+- 富邦卡為 benchmark 資料，不代表合作銀行資料。
 
 ---
 
-## FAQ
+## 常見問題
 
-**Q: 需要哪些 API Key？**
+**Q: 一般使用者需要自己的 Anthropic API key 嗎？**
 
-只需 `ANTHROPIC_API_KEY`。到 https://console.anthropic.com 申請即可。Claude API 會代表你連到 `/mcp` 呼叫工具。
+分使用情境：
 
-**Q: 為什麼要用 MCP Connector，不直接 function calling？**
+- 使用 Cursor 或其他 remote MCP client 連到本專案公開 `/mcp` endpoint 時，不需要提供 `ANTHROPIC_API_KEY`。對話與推理由使用者自己的 MCP client / 模型環境負責，本服務只回傳 deterministic MCP tool 結果。
+- 使用本專案 Web Demo 並想完整測試 Claude parse、推薦理由生成或 `/api/chat` Agent mode 時，需要使用者自己的 `ANTHROPIC_API_KEY`，並在本地或私有 backend 主動開啟 `ENABLE_SERVER_LLM=true` 或 `ENABLE_AGENT_CHAT=true`。
 
-詳見前段 **Why MCP**。簡短來說，function calling 需要把工具 schema 綁在單一 LLM API 呼叫中；MCP 讓 `/mcp` 成為可重用的標準工具介面，推薦規則與資料查詢留在後端，未來更容易接到不同數位渠道。
+**Q: 為什麼要用 MCP，不直接 function calling？**
 
-**Q: 富邦卡的資料來源？**
+MCP 讓推薦工具成為可重用的標準介面。同一套 `/mcp` 可被 Web Demo、Claude MCP Connector、Cursor 或其他支援 remote MCP 的 client 使用；推薦規則與資料查詢仍留在 bank-owned backend。
 
-富邦銀行無公開 JSON API，資料為手動整理。需定期人工更新。
+**Q: 如果 `npm ci` 出現 Node engine warning 怎麼辦？**
 
-**Q: 如何新增卡片或更新資料？**
+請使用 Node.js 22 LTS。CI 也使用 Node 22。
 
-1. 修改 `data/processed/` 中的原始 JSON
-2. 執行 `python -m scraper.merge` 重新合併
-3. 重啟（或 redeploy）後端
+**Q: 如果 Render backend 睡著了怎麼辦？**
+
+第一次開啟可能需要等待 cold start。若前端短時間內沒有資料，稍等後重新整理。
+
+**Q: 如何更新或驗證資料？**
+
+資料 schema 在 `data/schemas/card_schema.json`，runtime data 在 `data/processed/merged_cards.json`。修改資料後請執行 `uv run python -m scraper.run validate`。
 
 ---
 
-## Contributors
+## Contributor
 
-中信銀行實習專案團隊：
+中信銀行實習專案小組：
 
 | GitHub | 角色 |
 |--------|------|
