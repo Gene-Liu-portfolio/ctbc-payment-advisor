@@ -15,6 +15,12 @@ from ..utils.data_loader import validate_card_ids
 from ..utils.llm_parser import parse_scenario, generate_reasons
 
 
+OFF_TOPIC_MESSAGE = (
+    "我是信用卡消費建議助理，只能協助刷卡、付款通路與信用卡回饋相關問題。"
+    "例如：「去全聯花 1500 元，該用哪張卡？」"
+)
+
+
 # ── 情境解析 ──────────────────────────────────────────────────────────────────
 
 # 金額抽取：「3000元」「NT$1,500」「花了500」
@@ -98,6 +104,60 @@ def _extract_channels(text: str) -> list[str]:
     return found
 
 
+def has_deterministic_consumption_intent(
+    text: str,
+    amount: float | None = None,
+    channels: list[str] | None = None,
+) -> bool:
+    """
+    Strict fallback guard used when LLM parsing is disabled or unavailable.
+
+    Continue only when the text contains a concrete merchant/channel, or when
+    it has both an amount and payment/credit-card consumption intent.
+    """
+    if not text or not text.strip():
+        return False
+
+    detected_channels = _extract_channels(text) if channels is None else channels
+    if detected_channels:
+        return True
+
+    detected_amount = _extract_amount(text) if amount is None else amount
+    if detected_amount <= 0:
+        return False
+
+    intent_keywords = (
+        "刷卡", "信用卡", "付款", "支付", "消費", "花", "買", "繳", "訂",
+        "回饋", "划算", "推薦", "哪張卡", "用哪張", "付錢", "結帳",
+        "card", "cashback", "pay", "payment",
+    )
+    text_lower = text.lower()
+    return any(keyword.lower() in text_lower for keyword in intent_keywords)
+
+
+def off_topic_result(scenario: str) -> dict:
+    return {
+        "scenario": scenario,
+        "parsed": {"channels": [], "amount": 0},
+        "recommendations": [],
+        "off_topic_message": OFF_TOPIC_MESSAGE,
+        "error": None,
+    }
+
+
+def deterministic_fallback_channels(text: str) -> list[dict]:
+    raw_channels = _extract_channels(text) or ["一般消費"]
+    parsed_channels = []
+    seen_cids = set()
+    for ch_name in raw_channels:
+        cid = _resolve_channel(ch_name)
+        if cid in seen_cids:
+            continue
+        seen_cids.add(cid)
+        parsed_channels.append({"name": ch_name, "channel_id": cid})
+    return parsed_channels
+
+
 def recommend_payment(
     scenario: str,
     cards_owned: list[str],
@@ -142,13 +202,9 @@ def recommend_payment(
 
     # 與系統無關的問題 → 直接回拒答訊息，不執行推薦
     if llm_parsed is not None and not llm_parsed.get("is_consumption_scenario", True):
-        return {
-            "scenario": scenario,
-            "parsed":   {"channels": [], "amount": 0},
-            "recommendations":   [],
-            "off_topic_message": llm_parsed["off_topic_message"],
-            "error":             None,
-        }
+        result = off_topic_result(scenario)
+        result["off_topic_message"] = llm_parsed["off_topic_message"]
+        return result
 
     if llm_parsed is not None:
         amount = llm_parsed["amount"]
@@ -165,14 +221,10 @@ def recommend_payment(
     else:
         # Fallback：原本的 regex 路徑
         amount = _extract_amount(scenario)
-        raw_channels = _extract_channels(scenario) or ["一般消費"]
-        seen_cids = set()
-        for ch_name in raw_channels:
-            cid = _resolve_channel(ch_name)
-            if cid in seen_cids:
-                continue
-            seen_cids.add(cid)
-            parsed_channels.append({"name": ch_name, "channel_id": cid})
+        raw_channels = _extract_channels(scenario)
+        if not has_deterministic_consumption_intent(scenario, amount, raw_channels):
+            return off_topic_result(scenario)
+        parsed_channels = deterministic_fallback_channels(scenario)
 
     # ── 步驟 2：對每個通路查最佳卡片 ──
     recommendations = []

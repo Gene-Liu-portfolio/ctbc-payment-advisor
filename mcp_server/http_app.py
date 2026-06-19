@@ -45,6 +45,9 @@ from .server import mcp as mcp_server
 from .tools.compare import compare_cards as _compare_cards
 from .tools.promotions import get_card_details as _get_card_details
 from .tools.promotions import get_promotions as _get_promotions
+from .tools.recommend import OFF_TOPIC_MESSAGE
+from .tools.recommend import deterministic_fallback_channels
+from .tools.recommend import has_deterministic_consumption_intent
 from .tools.recommend import recommend_payment as _recommend_payment
 from .tools.search import _channel_display_name
 from .tools.search import search_by_channel as _search_by_channel
@@ -128,15 +131,6 @@ def _extract_amount_fallback(text: str) -> dict:
             "amount_display": "未指定",
         }
     return max(candidates, key=lambda item: item["amount"])
-
-
-def _fallback_channels(text: str) -> list[dict]:
-    """Minimal deterministic channel fallback when LLM parsing is unavailable."""
-    if re.search(r"日本|東京|大阪|京都|海外|國外|境外|日圓|日元|円|JPY", text, flags=re.I):
-        merchant_match = re.search(r"(?:在|到)(?:東京|大阪|京都|日本)?(?:的)?([^\s，,。]+?)(?:吃|買|消費|刷|花)", text)
-        merchant = merchant_match.group(1) if merchant_match else "海外消費"
-        return [{"name": merchant, "channel_id": "overseas_general"}]
-    return [{"name": "一般消費", "channel_id": "general"}]
 
 
 async def api_cards(_: Request):
@@ -294,7 +288,26 @@ async def api_recommend_stream(request: Request):
                 })
         else:
             amount = amount_info["amount"]
-            parsed_channels = _fallback_channels(scenario)
+            if not has_deterministic_consumption_intent(scenario, amount):
+                yield sse({
+                    "type": "tool_call",
+                    "tool": "parse_scenario",
+                    "status": "done",
+                    "label": "已識別為非信用卡相關問題",
+                })
+                yield sse({"type": "thinking_done", "elapsed_seconds": round(time.time() - start_time, 1)})
+                yield sse({
+                    "type": "result",
+                    "data": {
+                        "scenario": scenario,
+                        "parsed": {"channels": [], "amount": 0},
+                        "recommendations": [],
+                        "off_topic_message": OFF_TOPIC_MESSAGE,
+                        "error": None,
+                    },
+                })
+                return
+            parsed_channels = deterministic_fallback_channels(scenario)
 
         if amount_info["currency"] != "TWD" and amount_info["amount"] > 0:
             amount = amount_info["amount"]
