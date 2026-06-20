@@ -128,6 +128,11 @@ def _load_json(path: Path) -> dict:
         return json.load(f)
 
 
+def _repo_relative(path: Path) -> str:
+    """Return a repo-relative path for metadata stored in committed JSON."""
+    return path.resolve().relative_to(BASE_DIR).as_posix()
+
+
 def _is_plain_general_reward(channel: dict) -> bool:
     """Return true for base general-spend rewards, not campaign/venue maxima."""
     if channel.get("channel_id") != "general":
@@ -278,10 +283,10 @@ def merge() -> dict:
         "description": "合併自 ctbc_cards + fubon_cards + card_features + microsite_deals",
         "last_updated": datetime.now().strftime("%Y-%m-%d"),
         "merge_sources": {
-            "ctbc_cards": str(DATA_PROCESSED / "ctbc_cards.json"),
-            "fubon_cards": str(DATA_PROCESSED / "fubon_cards.json"),
-            "card_features": str(DATA_SCRAPED / "card_features.json"),
-            "microsite_deals": str(DATA_SCRAPED / "microsite_deals.json"),
+            "ctbc_cards": _repo_relative(DATA_PROCESSED / "ctbc_cards.json"),
+            "fubon_cards": _repo_relative(DATA_PROCESSED / "fubon_cards.json"),
+            "card_features": _repo_relative(DATA_SCRAPED / "card_features.json"),
+            "microsite_deals": _repo_relative(DATA_SCRAPED / "microsite_deals.json"),
         },
         "cards": merged_cards,
     }

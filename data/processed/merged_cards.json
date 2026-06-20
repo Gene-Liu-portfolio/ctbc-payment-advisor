@@ -3,10 +3,10 @@
   "description": "合併自 ctbc_cards + fubon_cards + card_features + microsite_deals",
   "last_updated": "2026-06-08",
   "merge_sources": {
-    "ctbc_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/ctbc_cards.json",
-    "fubon_cards": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/processed/fubon_cards.json",
-    "card_features": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/scraped/card_features.json",
-    "microsite_deals": "/Users/weichengchen/ctbc-payment-advisor/ctbc-payment-advisor/data/scraped/microsite_deals.json"
+    "ctbc_cards": "data/processed/ctbc_cards.json",
+    "fubon_cards": "data/processed/fubon_cards.json",
+    "card_features": "data/scraped/card_features.json",
+    "microsite_deals": "data/scraped/microsite_deals.json"
   },
   "cards": [
     {

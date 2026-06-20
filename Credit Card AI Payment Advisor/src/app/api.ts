@@ -6,7 +6,8 @@
  *   （/api/recommend 會用 Haiku 輔助解析情境與產生理由；失敗時後端 fallback 到 regex）
  * - SSE Chat：與 Claude 多輪對話，Claude 透過 MCP Connector 自動呼叫 /mcp 工具
  *
- * 所有路徑走 /api/*（Vite proxy 轉發到 http://127.0.0.1:8000）。
+ * 所有路徑走 /api/*；Vite 預設 proxy 到 Render backend，
+ * 可用 VITE_API_PROXY_TARGET=http://127.0.0.1:8000 切到本地 backend。
  */
 
 export interface CardMenuItem {
